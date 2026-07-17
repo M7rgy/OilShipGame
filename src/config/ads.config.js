@@ -1,24 +1,24 @@
 'use strict';
 
 /**
- * Ad configuration. The IDs below are Google's official AdMob *test* unit IDs
- * — safe to develop against and they show real test ads. Before publishing,
- * set `testMode` to false and replace each ID with your own AdMob unit IDs
- * (and put your App ID in android/app/src/main/AndroidManifest.xml — see
- * ANDROID.md).
+ * Ad configuration — real AdMob unit IDs for this app.
+ *
+ * `testMode: true` makes the game request Google TEST ads (labelled "Test Ad")
+ * even though the IDs are real, so you can verify placements safely. When you
+ * publish to the Play Store, set `testMode: false` for the release build so
+ * real ads serve. Never tap live ads on your own device — see ANDROID.md.
  */
 const ADS_CONFIG = {
-  // Keep true until you ship: uses Google demo ads and avoids policy strikes
-  // from clicking your own live ads during testing.
+  // true = show test ads (safe). Flip to false only for the published build.
   testMode: true,
 
-  // AdMob App ID (goes in AndroidManifest.xml). Test app ID shown here.
-  appId: 'ca-app-pub-3940256099942544~3347511713',
+  // AdMob App ID (must also be set in AndroidManifest.xml, see ANDROID.md).
+  appId: 'ca-app-pub-8399875310081174~2034833058',
 
-  // Ad unit IDs (Android test units).
-  banner: 'ca-app-pub-3940256099942544/6300978111',
-  interstitial: 'ca-app-pub-3940256099942544/1033173712',
-  rewarded: 'ca-app-pub-3940256099942544/5224354917',
+  // Ad unit IDs.
+  banner: 'ca-app-pub-8399875310081174/2949147836',
+  interstitial: 'ca-app-pub-8399875310081174/6640860699',
+  rewarded: 'ca-app-pub-8399875310081174/8281365565',
 
   // Show an interstitial after clearing every N legs (1 = between every leg).
   interstitialEveryLevels: 1,
