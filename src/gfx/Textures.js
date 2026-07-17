@@ -265,6 +265,32 @@ const Textures = {
     foam.fillCircle(3, 3, 2.4);
     foam.generateTexture('foam', 6, 6);
     foam.destroy();
+
+    // repair kit: floating white crate with a green cross
+    const kit = this._g(scene);
+    kit.fillStyle(0x11324a, 1);
+    kit.fillRoundedRect(1, 5, 30, 24, 4); // buoy ring
+    kit.fillStyle(0xe8eef2, 1);
+    kit.fillRoundedRect(4, 8, 24, 18, 3);
+    kit.fillStyle(0x2fae5f, 1);
+    kit.fillRect(13, 10, 6, 14);
+    kit.fillRect(9, 14, 14, 6);
+    kit.generateTexture('repairKit', 32, 34);
+    kit.destroy();
+
+    // flare resupply: orange canister with warning stripes
+    const fk = this._g(scene);
+    fk.fillStyle(0x11324a, 1);
+    fk.fillRoundedRect(3, 4, 26, 26, 4);
+    fk.fillStyle(0xe07b2f, 1);
+    fk.fillRoundedRect(6, 7, 20, 20, 3);
+    fk.fillStyle(0xf4e9d8, 1);
+    fk.fillRect(6, 12, 20, 4);
+    fk.fillRect(6, 20, 20, 4);
+    fk.fillStyle(0xffd27a, 1);
+    fk.fillCircle(16, 7, 3); // igniter cap
+    fk.generateTexture('flareKit', 32, 34);
+    fk.destroy();
   },
 
   // ------------------------------------------------------------------ water

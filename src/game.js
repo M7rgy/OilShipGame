@@ -23,7 +23,10 @@ const config = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH
   },
-  scene: [BootScene, MainMenuScene, GameScene, GameOverScene, VictoryScene]
+  input: {
+    gamepad: true
+  },
+  scene: [BootScene, MainMenuScene, GameScene, PauseScene, GameOverScene, VictoryScene]
 };
 
 window.game = new Phaser.Game(config);

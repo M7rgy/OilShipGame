@@ -44,9 +44,9 @@ class MainMenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     this.add.text(width / 2, height * 0.80,
-      'ARROWS / WASD — helm & throttle      M — mute', {
+      'ARROWS / WASD — helm      SPACE — decoy flare      P — pause      M — mute      (gamepad supported)', {
       fontFamily: 'monospace',
-      fontSize: '18px',
+      fontSize: '16px',
       color: '#bcd2e0'
     }).setOrigin(0.5);
 
@@ -85,6 +85,9 @@ class MainMenuScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-ENTER', begin);
     this.input.keyboard.on('keydown-SPACE', begin);
     this.input.on('pointerdown', begin);
+    if (this.input.gamepad) {
+      this.input.gamepad.once('down', begin);
+    }
   }
 
   update(time, delta) {

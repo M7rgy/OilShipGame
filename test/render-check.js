@@ -25,6 +25,21 @@ const MIME = {
   '.css': 'text/css'
 };
 
+/**
+ * Find a Chromium binary: explicit override, the preinstalled sandbox copy,
+ * or whatever playwright has in its browser cache (CI installs it there via
+ * `npx playwright install chromium`).
+ */
+function resolveChromium() {
+  if (process.env.CHROMIUM_PATH) {
+    return process.env.CHROMIUM_PATH;
+  }
+  if (fs.existsSync('/opt/pw-browsers/chromium')) {
+    return '/opt/pw-browsers/chromium';
+  }
+  return chromium.executablePath();
+}
+
 function serve() {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
@@ -75,7 +90,7 @@ async function main() {
   fs.mkdirSync(SHOTS, { recursive: true });
   const server = await serve();
   const browser = await chromium.launch({
-    executablePath: process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium',
+    executablePath: resolveChromium(),
     args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required']
   });
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
@@ -137,6 +152,18 @@ async function main() {
     await page.waitForTimeout(1500);
     await page.screenshot({ path: path.join(SHOTS, '4-missile.png') });
     console.log('Missile launched and tracking.');
+
+    // 5. launch a decoy flare
+    await page.keyboard.press('Space');
+    const flareState = await page.evaluate(() => {
+      const s = window.game.scene.getScene('Game');
+      return { stock: s.flareStock, burning: s.activeFlares.length };
+    });
+    console.log('Flare state:', JSON.stringify(flareState));
+    if (flareState.stock !== 2 || flareState.burning < 1) {
+      fail('decoy flare did not launch');
+    }
+    await page.screenshot({ path: path.join(SHOTS, '5-flare.png') });
 
     const state = await page.evaluate(() => {
       const s = window.game.scene.getScene('Game');

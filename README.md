@@ -14,14 +14,24 @@ are no image or audio assets.
 | Key | Action |
 | --- | --- |
 | Arrow keys / WASD | Helm and throttle |
-| Enter / Space | Start / confirm |
+| Space | Launch decoy flare (in game) / start (in menu) |
+| P / Esc | Pause |
+| Enter | Start / confirm |
 | M | Mute |
-| Esc | Back to menu (from end screens) |
+
+Gamepads are supported: left stick or d-pad steers, A launches a flare,
+Start pauses.
 
 The tanker is heavy: it accelerates slowly, keeps its momentum, and reversing
 is weaker than steaming ahead. Touching the rocky shorelines scrapes the hull;
 mines and missiles do serious damage. Reach the green buoy line to clear a
 level. The hull is partially patched (+25) between legs.
+
+You carry a limited stock of decoy flares — launch one and any missile whose
+seeker picks it up chases the flare and detonates on it. Floating supply
+buoys drift in the channel: white crates repair +20 hull, orange canisters
+add +2 flares (max 6). A missile that detonates close by without connecting
+scores a +50 close-call bonus.
 
 ## Tech stack
 
@@ -44,6 +54,19 @@ browser check (script paths resolve against `node_modules/`):
 npx http-server -p 8080 .    # then visit http://localhost:8080
 ```
 
+## Desktop builds
+
+```bash
+npm run dist          # package for the current platform (output in dist/)
+npm run dist:win      # Windows NSIS installer + portable exe
+npm run dist:linux    # Linux AppImage
+npm run dist:mac      # macOS dmg
+```
+
+Packaging is handled by electron-builder using the `build` section of
+package.json. Cross-compiling Windows builds from Linux/macOS generally
+works; macOS builds must be made on macOS.
+
 ## Rendering smoke test
 
 A headless-Chromium check that boots the real game, plays through menu →
@@ -53,7 +76,8 @@ gameplay, and screenshots each state:
 npm run test:render
 ```
 
-Screenshots land in `test/screenshots/`.
+Screenshots land in `test/screenshots/`. The same test runs in GitHub
+Actions on every push (`.github/workflows/ci.yml`).
 
 ## Project layout
 
@@ -66,9 +90,10 @@ src/
   config/levels.js         The 5-level difficulty array
   audio/SoundSynth.js      Web Audio sound synthesizer
   gfx/Textures.js          Procedural texture generation
-  scenes/                  Boot, MainMenu, Game, GameOver, Victory
+  scenes/                  Boot, MainMenu, Game, Pause, GameOver, Victory
 index.html                 Renderer entry page
 test/render-check.js       Headless rendering smoke test
+.github/workflows/ci.yml   CI: render smoke test on every push
 ```
 
 ## Steam

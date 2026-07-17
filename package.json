@@ -5,7 +5,11 @@
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
-    "test:render": "node test/render-check.js"
+    "test:render": "node test/render-check.js",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux",
+    "dist:mac": "electron-builder --mac"
   },
   "repository": {
     "type": "git",
@@ -18,11 +22,47 @@
     "side-scroller"
   ],
   "license": "MIT",
+  "build": {
+    "appId": "com.hormuzescape.game",
+    "productName": "Hormuz Escape",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "src/**/*",
+      "index.html",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "deleteAppDataOnUninstall": true
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Game"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.games"
+    }
+  },
   "dependencies": {
     "phaser": "^3.90.0"
   },
   "devDependencies": {
     "electron": "^43.1.1",
+    "electron-builder": "^26.15.3",
     "playwright-core": "^1.61.1"
   }
 }

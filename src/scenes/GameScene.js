@@ -27,6 +27,7 @@ class GameScene extends Phaser.Scene {
     this.buildBackdrop();
     this.buildShip();
     this.buildMines();
+    this.buildPickups();
     this.buildHud();
 
     // camera: horizontal follow with the ship sitting left-of-centre so the
@@ -41,6 +42,15 @@ class GameScene extends Phaser.Scene {
       Sound.setMuted(!Sound.muted);
       this.muteText.setText(Sound.muted ? 'MUTED' : '');
     });
+    this.input.keyboard.on('keydown-SPACE', () => this.launchFlare());
+    const pause = () => this.pauseGame();
+    this.input.keyboard.on('keydown-P', pause);
+    this.input.keyboard.on('keydown-ESC', pause);
+    this.padButtons = { flare: false, pause: false }; // edge detection
+
+    // decoy flares: limited supply, missiles chase them instead of the ship
+    this.flareStock = 3;
+    this.activeFlares = [];
 
     // water current state
     this.current = new Phaser.Math.Vector2(0, 0);
@@ -131,7 +141,7 @@ class GameScene extends Phaser.Scene {
     // heavy-tanker physics: slow to accelerate, slow to stop
     this.ship.setDamping(true);
     this.ship.setDrag(0.45);
-    this.ship.setMaxVelocity(240, 170);
+    this.ship.setMaxVelocity(255, 185);
 
     this.hull = this.registry.get('hull');
     this.invulnUntil = 0;
@@ -205,6 +215,113 @@ class GameScene extends Phaser.Scene {
     this.mines.push(mine);
   }
 
+  buildPickups() {
+    const cfg = this.cfg;
+    this.pickups = [];
+    const rnd = new Phaser.Math.RandomDataGenerator([`pickups-${cfg.id}`]);
+
+    for (let x = 1600; x < this.finishX - 500; x += 1400 + rnd.between(-200, 300)) {
+      if (rnd.frac() > 0.65) {
+        continue;
+      }
+      const key = rnd.frac() < 0.55 ? 'repairKit' : 'flareKit';
+      const y = rnd.between(cfg.passageTop + 60, cfg.passageBottom - 60);
+      const kit = this.physics.add.image(x, y, key).setDepth(5);
+      kit.kind = key;
+      kit.body.setAllowGravity(false);
+      kit.setImmovable(true);
+      kit.baseY = y;
+      kit.bobSeed = Math.random() * Math.PI * 2;
+      this.tweens.add({
+        targets: kit, angle: 6, duration: 1200 + Math.random() * 400,
+        yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+      });
+      this.physics.add.overlap(this.ship, kit, () => this.collectPickup(kit));
+      this.pickups.push(kit);
+    }
+  }
+
+  collectPickup(kit) {
+    if (!kit.active || this.gameOverStarted) {
+      return;
+    }
+    Sound.pickup();
+    if (kit.kind === 'repairKit') {
+      this.hull = Math.min(100, this.hull + 20);
+      this.registry.set('hull', this.hull);
+      this.updateHullBar();
+      this.floatText(kit.x, kit.y - 30, '+20 HULL', '#37e07a');
+    } else {
+      this.flareStock = Math.min(6, this.flareStock + 2);
+      this.updateFlareHud();
+      this.floatText(kit.x, kit.y - 30, '+2 FLARES', '#ffd27a');
+    }
+    this.add.particles(kit.x, kit.y, 'spark', {
+      speed: { min: 40, max: 140 }, scale: { start: 1.2, end: 0 },
+      lifespan: 500, quantity: 10, stopAfter: 10
+    }).setDepth(15);
+    kit.destroy();
+  }
+
+  launchFlare() {
+    if (this.gameOverStarted || this.levelDone || this.flareStock <= 0) {
+      return;
+    }
+    this.flareStock--;
+    this.updateFlareHud();
+    Sound.flareLaunch();
+
+    // fired up and back from the stern, then drifts and burns out
+    const flare = this.physics.add.image(this.ship.x - 40, this.ship.y - 20, 'flare')
+      .setDepth(12).setTint(0xffb347).setBlendMode(Phaser.BlendModes.ADD).setScale(1.4);
+    flare.body.setAllowGravity(false);
+    flare.setVelocity(this.ship.body.velocity.x - 140, -120);
+    flare.setDrag(60, 40);
+    flare.bornAt = this.time.now;
+
+    flare.sparkler = this.add.particles(0, 0, 'spark', {
+      speed: { min: 10, max: 60 },
+      scale: { start: 1.1, end: 0 },
+      tint: [0xffd27a, 0xff7733],
+      lifespan: 450,
+      frequency: 30
+    }).setDepth(11);
+    flare.sparkler.startFollow(flare);
+
+    this.tweens.add({
+      targets: flare, scale: 2.2, duration: 350, yoyo: true, repeat: -1
+    });
+    this.activeFlares.push(flare);
+  }
+
+  killFlare(flare) {
+    flare.sparkler.stopFollow();
+    flare.sparkler.stop();
+    const sparkler = flare.sparkler;
+    this.time.delayedCall(600, () => sparkler.destroy());
+    flare.destroy();
+  }
+
+  pauseGame() {
+    if (this.gameOverStarted || this.levelDone || this.scene.isPaused()) {
+      return;
+    }
+    Sound.stopLockOn();
+    Sound.setEngineThrottle(0);
+    this.scene.launch('Pause');
+    this.scene.pause();
+  }
+
+  floatText(x, y, str, color) {
+    const t = this.add.text(x, y, str, {
+      fontFamily: 'monospace', fontSize: '18px', color, stroke: '#04121f', strokeThickness: 4
+    }).setOrigin(0.5).setDepth(60);
+    this.tweens.add({
+      targets: t, y: y - 46, alpha: 0, duration: 1100,
+      ease: 'Cubic.easeOut', onComplete: () => t.destroy()
+    });
+  }
+
   launchMissile() {
     if (this.gameOverStarted || this.levelDone) {
       return;
@@ -223,6 +340,8 @@ class GameScene extends Phaser.Scene {
     missile.body.setAllowGravity(false);
     missile.rotation = Math.PI; // flying left
     missile.alive = true;
+    missile.hitShip = false;
+    missile.minDistToShip = Infinity;
 
     // glow sprite riding the airframe
     missile.glowSprite = this.add.image(x, y, 'flare').setDepth(6)
@@ -252,6 +371,16 @@ class GameScene extends Phaser.Scene {
     this.levelText = this.add.text(pad, 16, `LV ${this.cfg.id}  ${this.cfg.name.toUpperCase()}`, {
       fontFamily: 'monospace', fontSize: '17px', color: '#e8f0f6'
     }).setScrollFactor(0).setDepth(100);
+
+    this.scoreText = this.add.text(pad, 50, '', {
+      fontFamily: 'monospace', fontSize: '14px', color: '#9fb4c4'
+    }).setScrollFactor(0).setDepth(100);
+    this.updateScoreHud();
+
+    this.flareText = this.add.text(pad, 70, '', {
+      fontFamily: 'monospace', fontSize: '14px', color: '#ffd27a'
+    }).setScrollFactor(0).setDepth(100);
+    this.updateFlareHud();
 
     // hull bar
     this.add.text(w * 0.40, 16, 'HULL', {
@@ -344,6 +473,7 @@ class GameScene extends Phaser.Scene {
     if (!missile.alive || this.gameOverStarted) {
       return;
     }
+    missile.hitShip = true;
     this.killMissile(missile, true);
     this.damage(26);
   }
@@ -352,6 +482,12 @@ class GameScene extends Phaser.Scene {
     missile.alive = false;
     if (exploded) {
       this.explode(missile.x, missile.y, false);
+    }
+    // close-call bonus: it blew up near us but never connected
+    if (!missile.hitShip && missile.minDistToShip < 110 && !this.gameOverStarted && !this.levelDone) {
+      this.registry.set('score', this.registry.get('score') + 50);
+      this.updateScoreHud();
+      this.floatText(this.ship.x, this.ship.y - 50, '+50 CLOSE CALL', '#5fb6e8');
     }
     missile.trail.stopFollow();
     missile.trail.stop();
@@ -366,7 +502,7 @@ class GameScene extends Phaser.Scene {
     if (now < this.invulnUntil) {
       return;
     }
-    this.invulnUntil = now + 900;
+    this.invulnUntil = now + 1100;
     this.hull = Math.max(0, this.hull - amount);
     this.registry.set('hull', this.hull);
     this.updateHullBar();
@@ -379,6 +515,14 @@ class GameScene extends Phaser.Scene {
     if (this.hull <= 0) {
       this.sinkShip();
     }
+  }
+
+  updateScoreHud() {
+    this.scoreText.setText(`SCORE ${this.registry.get('score')}`);
+  }
+
+  updateFlareHud() {
+    this.flareText.setText(`FLARES [SPACE] ${'*'.repeat(this.flareStock)}${'.'.repeat(Math.max(0, 6 - this.flareStock))}`);
   }
 
   updateHullBar() {
@@ -472,19 +616,49 @@ class GameScene extends Phaser.Scene {
     const cam = this.cameras.main;
 
     // ---- helm input: heavy accelerations, momentum does the rest
-    const left = this.cursors.left.isDown || this.wasd.A.isDown;
-    const right = this.cursors.right.isDown || this.wasd.D.isDown;
-    const up = this.cursors.up.isDown || this.wasd.W.isDown;
-    const down = this.cursors.down.isDown || this.wasd.S.isDown;
+    let left = this.cursors.left.isDown || this.wasd.A.isDown;
+    let right = this.cursors.right.isDown || this.wasd.D.isDown;
+    let up = this.cursors.up.isDown || this.wasd.W.isDown;
+    let down = this.cursors.down.isDown || this.wasd.S.isDown;
 
-    const ACCEL_X = 190;
-    const ACCEL_Y = 150;
+    // gamepad: left stick / d-pad for helm, A (0) flare, Start (9) pause
+    let padX = 0;
+    let padY = 0;
+    if (this.input.gamepad && this.input.gamepad.total > 0) {
+      const pad = this.input.gamepad.getPad(0);
+      if (pad) {
+        padX = Math.abs(pad.axes.length > 0 ? pad.axes[0].getValue() : 0) > 0.15
+          ? pad.axes[0].getValue() : 0;
+        padY = Math.abs(pad.axes.length > 1 ? pad.axes[1].getValue() : 0) > 0.15
+          ? pad.axes[1].getValue() : 0;
+        left = left || pad.left;
+        right = right || pad.right;
+        up = up || pad.up;
+        down = down || pad.down;
+
+        const flarePressed = pad.buttons[0] && pad.buttons[0].pressed;
+        if (flarePressed && !this.padButtons.flare) { this.launchFlare(); }
+        this.padButtons.flare = flarePressed;
+
+        const pausePressed = pad.buttons[9] && pad.buttons[9].pressed;
+        if (pausePressed && !this.padButtons.pause) { this.pauseGame(); }
+        this.padButtons.pause = pausePressed;
+      }
+    }
+
+    const ACCEL_X = 215;
+    const ACCEL_Y = 175;
     let ax = 0;
     let ay = 0;
     if (right) { ax += ACCEL_X; }
     if (left) { ax -= ACCEL_X * 0.75; } // reversing a tanker is harder
     if (up) { ay -= ACCEL_Y; }
     if (down) { ay += ACCEL_Y; }
+    // analogue stick blends on top of digital input
+    if (padX > 0) { ax += ACCEL_X * padX; } else { ax += ACCEL_X * 0.75 * padX; }
+    ay += ACCEL_Y * padY;
+    ax = Phaser.Math.Clamp(ax, -ACCEL_X * 0.75, ACCEL_X);
+    ay = Phaser.Math.Clamp(ay, -ACCEL_Y, ACCEL_Y);
 
     // ---- water current eases toward its target gust and shoves the hull
     this.current.x = Phaser.Math.Linear(this.current.x, this.currentTarget.x, 0.6 * dt);
@@ -531,7 +705,7 @@ class GameScene extends Phaser.Scene {
             speed: { min: 40, max: 140 }, scale: { start: 1, end: 0 },
             lifespan: 420, quantity: 6, stopAfter: 6
           }).setDepth(15);
-        this.hull = Math.max(0, this.hull - 6);
+        this.hull = Math.max(0, this.hull - 5);
         this.registry.set('hull', this.hull);
         this.updateHullBar();
         this.cameras.main.shake(120, 0.005);
@@ -544,14 +718,29 @@ class GameScene extends Phaser.Scene {
       ship.body.velocity.y += (ship.y < this.viewH / 2 ? 1 : -1) * 260 * dt;
     }
 
-    // ---- mines bob on the swell
+    // ---- mines and pickups bob on the swell
     for (const mine of this.mines) {
       if (!mine.active) { continue; }
       mine.y = mine.baseY + Math.sin(time * 0.0016 + mine.bobSeed) * 9;
       mine.glow.setPosition(mine.x, mine.y);
     }
+    for (const kit of this.pickups) {
+      if (!kit.active) { continue; }
+      kit.y = kit.baseY + Math.sin(time * 0.0014 + kit.bobSeed) * 7;
+    }
 
-    // ---- missiles home in on the ship
+    // ---- decoy flares burn for a few seconds then fizzle
+    for (let i = this.activeFlares.length - 1; i >= 0; i--) {
+      const f = this.activeFlares[i];
+      if (!f.active || time > f.bornAt + 3800) {
+        if (f.active) {
+          this.killFlare(f);
+        }
+        this.activeFlares.splice(i, 1);
+      }
+    }
+
+    // ---- missiles home in on the ship, unless a flare seduces them
     let anyLock = false;
     for (let i = this.missiles.length - 1; i >= 0; i--) {
       const m = this.missiles[i];
@@ -559,15 +748,41 @@ class GameScene extends Phaser.Scene {
         this.missiles.splice(i, 1);
         continue;
       }
-      const want = Phaser.Math.Angle.Between(m.x, m.y, ship.x, ship.y);
+
+      // pick target: nearest burning flare within seeker range, else the ship
+      let tx = ship.x;
+      let ty = ship.y;
+      let chasingFlare = null;
+      let best = 620; // seeker decoy-acquisition range
+      for (const f of this.activeFlares) {
+        if (!f.active) { continue; }
+        const df = Phaser.Math.Distance.Between(m.x, m.y, f.x, f.y);
+        if (df < best) {
+          best = df;
+          chasingFlare = f;
+          tx = f.x;
+          ty = f.y;
+        }
+      }
+
+      const want = Phaser.Math.Angle.Between(m.x, m.y, tx, ty);
       const turn = Phaser.Math.DegToRad(cfg.missileTurn) * dt;
       m.rotation = Phaser.Math.Angle.RotateTo(m.rotation, want, turn);
       this.physics.velocityFromRotation(m.rotation, cfg.missileSpeed, m.body.velocity);
       m.glowSprite.setPosition(m.x - Math.cos(m.rotation) * 26, m.y - Math.sin(m.rotation) * 26);
 
       const dist = Phaser.Math.Distance.Between(m.x, m.y, ship.x, ship.y);
-      if (dist < 1000) {
+      m.minDistToShip = Math.min(m.minDistToShip, dist);
+      if (dist < 1000 && !chasingFlare) {
         anyLock = true;
+      }
+
+      // a missile that reaches its flare detonates on it
+      if (chasingFlare && best < 30) {
+        this.killFlare(chasingFlare);
+        this.killMissile(m, true);
+        this.missiles.splice(i, 1);
+        continue;
       }
       // missiles that overshoot far behind the ship ditch into the sea
       if (m.x < cam.scrollX - 150 || m.y < -60 || m.y > this.viewH + 60) {

@@ -254,6 +254,50 @@ class SoundSynth {
     osc.stop(t + 0.25);
   }
 
+  /** Bright two-note blip for collecting a pickup. */
+  pickup() {
+    if (!this.ctx) {
+      return;
+    }
+    [660, 990].forEach((freq, i) => {
+      const t = this.ctx.currentTime + i * 0.09;
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.22, t + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+      osc.connect(gain);
+      gain.connect(this.master);
+      osc.start(t);
+      osc.stop(t + 0.2);
+    });
+  }
+
+  /** Short pitched whoosh for launching a decoy flare. */
+  flareLaunch() {
+    if (!this.ctx) {
+      return;
+    }
+    const t = this.ctx.currentTime;
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = this.noiseBuffer;
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = 2.5;
+    bp.frequency.setValueAtTime(600, t);
+    bp.frequency.exponentialRampToValueAtTime(2600, t + 0.28);
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.30, t);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+    noise.connect(bp);
+    bp.connect(gain);
+    gain.connect(this.master);
+    noise.start(t);
+    noise.stop(t + 0.35);
+  }
+
   /** Rising three-note fanfare for level clear / victory. */
   fanfare() {
     if (!this.ctx) {
