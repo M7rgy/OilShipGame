@@ -75,6 +75,10 @@
     "phaser": "^3.90.0"
   },
   "devDependencies": {
+    "@capacitor-community/admob": "^6.2.0",
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/cli": "^6.2.1",
+    "@capacitor/core": "^6.2.1",
     "electron": "^43.1.1",
     "electron-builder": "^26.15.3",
     "playwright-core": "^1.61.1"

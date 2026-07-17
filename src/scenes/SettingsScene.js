@@ -13,6 +13,8 @@ class SettingsScene extends Phaser.Scene {
     const { width, height } = this.scale;
     this.settings = Store.settings();
 
+    Ads.showBanner();
+
     const sky = this.add.graphics();
     Textures.verticalGradient(sky, 0, 0, width, height, 0x123049, 0x081f38);
     this.water = this.add.tileSprite(width / 2, height * 0.82, width, height * 0.4, 'water1')

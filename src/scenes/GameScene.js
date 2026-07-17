@@ -118,6 +118,11 @@ class GameScene extends Phaser.Scene {
     this.levelDone = false;
     this.tookDamage = false;
     this.endlessScored = 0; // px of travel already banked as score
+    // rewarded-ad continues used so far this run (persists across leg restarts)
+    this.continuesUsed = this.registry.get('continuesUsed') || 0;
+
+    // ads: no banner over gameplay (it would cover the touch controls)
+    Ads.hideBanner();
 
     Sound.init();
     Sound.resume();
@@ -667,13 +672,21 @@ class GameScene extends Phaser.Scene {
       fontFamily: 'monospace', fontSize: '16px', color: '#bcd2e0'
     }).setOrigin(0.5);
     card.add([bg, title, brief]);
+    this.briefingCard = card;
     this.tweens.add({
       targets: card,
       alpha: 0,
       delay: 2600,
       duration: 600,
-      onComplete: () => card.destroy()
+      onComplete: () => { card.destroy(); this.briefingCard = null; }
     });
+  }
+
+  dismissBriefing() {
+    if (this.briefingCard) {
+      this.briefingCard.destroy();
+      this.briefingCard = null;
+    }
   }
 
   // ------------------------------------------------------------------ events
@@ -812,6 +825,7 @@ class GameScene extends Phaser.Scene {
       return;
     }
     this.gameOverStarted = true;
+    this.dismissBriefing();
     Sound.stopEngine();
     Sound.stopLockOn();
     this.explode(this.ship.x, this.ship.y, true);
@@ -819,7 +833,7 @@ class GameScene extends Phaser.Scene {
     this.washEmitter.stop();
     this.funnelEmitter.setFrequency(40); // billowing smoke as she goes down
 
-    this.tweens.add({
+    this.sinkTween = this.tweens.add({
       targets: this.ship,
       y: this.ship.y + 140,
       angle: -14,
@@ -828,13 +842,91 @@ class GameScene extends Phaser.Scene {
       ease: 'Sine.easeIn'
     });
 
-    // record a high score (endless runs and any run with points earned)
+    // after the ship goes under, either offer a rewarded-ad continue or end
+    this.time.delayedCall(2200, () => this.afterSink());
+  }
+
+  /** Offer a "watch an ad to carry on" continue if one is available. */
+  afterSink() {
+    if (!this.gameOverStarted) {
+      return; // already revived
+    }
+    const usable = Ads.rewardReady() && this.continuesUsed < ADS_CONFIG.maxContinues;
+    if (usable) {
+      this.scene.launch('Continue', { continuesUsed: this.continuesUsed });
+      this.scene.pause();
+    } else {
+      this.finalizeGameOver();
+    }
+  }
+
+  /** Record the score and go to the Game Over screen. */
+  finalizeGameOver() {
     const label = this.endless
       ? `Endless ${Math.round((this.ship.x - 220) / 10)}m`
       : `Lv ${this.cfg.id}`;
     const rank = Store.addHighScore(this.registry.get('score'), label);
     this.registry.set('lastRank', rank);
-    this.time.delayedCall(2600, () => this.scene.start('GameOver'));
+    this.scene.start('GameOver');
+  }
+
+  /**
+   * Bring the ship back after a rewarded continue: same position (so leg
+   * progress is kept), full hull, hazards near the ship cleared, and a few
+   * seconds of invulnerability. Score and level are untouched.
+   */
+  revive() {
+    this.continuesUsed++;
+    this.registry.set('continuesUsed', this.continuesUsed);
+    this.gameOverStarted = false;
+
+    if (this.sinkTween) { this.sinkTween.stop(); }
+    const ship = this.ship;
+    ship.setAlpha(1);
+    ship.setAngle(0);
+    ship.rotation = 0;
+    ship.setPosition(ship.x, (this.cfg.passageTop + this.cfg.passageBottom) / 2);
+    ship.body.enable = true;
+    ship.body.setVelocity(0, 0);
+    ship.clearTint();
+
+    this.hull = 100;
+    this.registry.set('hull', this.hull);
+    this.updateHullBar();
+    this.invulnUntil = this.time.now + 2600;
+
+    // sweep away anything that would instantly re-sink us
+    this.missiles.forEach((m) => { if (m.active) { this.killMissile(m, true); } });
+    this.missiles = [];
+    this.shells.forEach((s) => { if (s.active) { this.killShell(s, false); } });
+    this.shells = [];
+    this.bombs.forEach((b) => { if (b.active) { this.killBomb(b); } });
+    this.bombs = [];
+    const clearR = 320;
+    this.mines.forEach((mine) => {
+      if (mine.active && Math.abs(mine.x - ship.x) < clearR) {
+        mine.collider.destroy();
+        mine.glow.destroy();
+        mine.destroy();
+      }
+    });
+    this.boats.forEach((b) => {
+      if (b.active && Math.abs(b.x - ship.x) < clearR) { this.killBoat(b); }
+    });
+
+    // restore effects + audio
+    this.washEmitter.start();
+    this.funnelEmitter.setFrequency(120);
+    Sound.startEngine();
+    if (this.settings.music) { Sound.startMusic(); }
+
+    // brief revive flourish + blink during invulnerability
+    this.cameras.main.flash(200, 120, 220, 160);
+    this.floatText(ship.x, ship.y - 60, 'BACK IN THE FIGHT', '#37e07a');
+    this.reviveBlink = this.tweens.add({
+      targets: ship, alpha: 0.35, duration: 160, yoyo: true, repeat: 7,
+      onComplete: () => ship.setAlpha(1)
+    });
   }
 
   completeLevel() {
@@ -864,12 +956,19 @@ class GameScene extends Phaser.Scene {
       this.registry.set('lastRank', rank);
       this.time.delayedCall(900, () => this.scene.start('Victory'));
     } else {
-      this.registry.set('levelIndex', idx + 1);
+      const nextIdx = idx + 1;
+      this.registry.set('levelIndex', nextIdx);
       const note = this.add.text(this.viewW / 2, this.viewH / 2, `${this.cfg.name} CLEARED`, {
         fontFamily: 'Georgia, serif', fontSize: '42px', color: '#37e07a', stroke: '#04121f', strokeThickness: 6
       }).setOrigin(0.5).setScrollFactor(0).setDepth(130);
       this.tweens.add({ targets: note, scale: 1.15, duration: 800, yoyo: true });
-      this.time.delayedCall(1800, () => this.scene.start('Game'));
+      // show an interstitial between legs (per configured frequency), then go
+      const every = Math.max(1, ADS_CONFIG.interstitialEveryLevels);
+      const showAd = nextIdx % every === 0;
+      this.time.delayedCall(1800, async () => {
+        if (showAd) { await Ads.showInterstitial(); }
+        this.scene.start('Game');
+      });
     }
   }
 

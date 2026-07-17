@@ -12,6 +12,8 @@ class GameOverScene extends Phaser.Scene {
     const endless = this.registry.get('mode') === 'endless';
     const cfg = endless ? ENDLESS_LEVEL : LEVELS[levelIdx];
 
+    Ads.showBanner();
+
     this.add.rectangle(width / 2, height / 2, width, height, 0x04121f, 1);
     this.water = this.add.tileSprite(width / 2, height * 0.8, width, height * 0.4, 'water5')
       .setAlpha(0.8);

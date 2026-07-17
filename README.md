@@ -58,10 +58,20 @@ The top five runs are saved locally and shown on the menu and end screens.
 **Settings** (menu: **S**) lets you set master volume and toggle screen shake
 and the ambient music pad; choices persist between sessions.
 
+### Continue (Android)
+
+On the Android build, when your ship sinks you can **watch a rewarded ad to
+carry on** from where you went down — full hull, same leg, score and progress
+kept (up to a few times per run). The desktop and plain-web builds have no
+ads, so they go straight to Game Over. Preview the whole ad flow in a browser
+with the `?ads` URL flag (see [ANDROID.md](ANDROID.md)).
+
 ## Tech stack
 
 - **Node.js** + **Phaser 3** (arcade physics, procedural textures)
 - **Electron** desktop wrapper (`electron/main.js`)
+- **Capacitor** + **AdMob** for the Android build and ads (see
+  [ANDROID.md](ANDROID.md))
 - **Web Audio API** synthesizer (`src/audio/SoundSynth.js`): diesel engine
   rumble, missile lock-on beeps, white-noise explosions, cannon reports, and
   an ambient minor-key music pad
@@ -166,11 +176,16 @@ electron/
 src/
   game.js                  Phaser game config / entry point
   config/levels.js         The 5-level array + endless config
+  config/ads.config.js     AdMob unit IDs + ad frequency / continue limits
+  ads/Ads.js               Ad abstraction (AdMob native / sim / off)
   audio/SoundSynth.js      Web Audio sound synthesizer
   gfx/Textures.js          Procedural texture generation
   ui/TouchControls.js      On-screen touch controls + tappable button helper
   util/Storage.js          localStorage settings + high scores, Steam helper
-  scenes/                  Splash, Boot, MainMenu, Settings, Game, Pause, GameOver, Victory
+  scenes/                  Splash, Boot, MainMenu, Settings, Game, Pause,
+                           Continue, GameOver, Victory
+capacitor.config.json      Capacitor (Android wrapper) config
+ANDROID.md                 Android build + AdMob setup guide
 index.html                 Renderer entry page
 tools/make-icon.js         Procedural app-icon generator (build/icon.ico|png)
 tools/make-web.js          Assembles the itch.io HTML5 bundle (dist-web/)

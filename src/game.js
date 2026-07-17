@@ -35,7 +35,7 @@ const config = {
     gamepad: true,
     activePointers: 3 // steer + fire + one spare, simultaneously
   },
-  scene: [SplashScene, BootScene, MainMenuScene, SettingsScene, GameScene, PauseScene, GameOverScene, VictoryScene]
+  scene: [SplashScene, BootScene, MainMenuScene, SettingsScene, GameScene, PauseScene, ContinueScene, GameOverScene, VictoryScene]
 };
 
 window.game = new Phaser.Game(config);

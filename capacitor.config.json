@@ -1,0 +1,15 @@
+{
+  "appId": "com.hormuzescape.game",
+  "appName": "Hormuz Escape",
+  "webDir": "dist-web/hormuz-escape",
+  "backgroundColor": "#04121fff",
+  "android": {
+    "backgroundColor": "#04121fff",
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "AdMob": {
+      "androidAppId": "ca-app-pub-3940256099942544~3347511713"
+    }
+  }
+}

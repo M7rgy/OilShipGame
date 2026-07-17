@@ -9,6 +9,8 @@ class VictoryScene extends Phaser.Scene {
   create() {
     const { width, height } = this.scale;
 
+    Ads.showBanner();
+
     // dawn sky over open water
     const sky = this.add.graphics();
     Textures.verticalGradient(sky, 0, 0, width, height * 0.55, 0x2a6f97, 0xf2c078);

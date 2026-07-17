@@ -68,6 +68,8 @@ class MainMenuScene extends Phaser.Scene {
       ease: 'Sine.easeInOut'
     });
 
+    Ads.showBanner();
+
     const begin = (mode) => {
       Sound.init();
       Sound.resume();
@@ -77,6 +79,7 @@ class MainMenuScene extends Phaser.Scene {
       this.registry.set('levelIndex', 0);
       this.registry.set('hull', 100);
       this.registry.set('score', 0);
+      this.registry.set('continuesUsed', 0);
       this.scene.start('Game');
     };
 

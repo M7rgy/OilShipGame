@@ -71,6 +71,9 @@ class SplashScene extends Phaser.Scene {
     Sound.resume();
     Sound.setVolume(Store.settings().volume);
 
+    // kick off ad SDK init (async, safe no-op off mobile)
+    Ads.init();
+
     // swap the prompt for a loading indicator, then generate textures on the
     // next frame so the indicator actually paints before the blocking work
     this.tweens.killTweensOf(this.prompt);
