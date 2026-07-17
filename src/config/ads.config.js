@@ -9,8 +9,14 @@
  * real ads serve. Never tap live ads on your own device — see ANDROID.md.
  */
 const ADS_CONFIG = {
-  // true = show test ads (safe). Flip to false only for the published build.
-  testMode: true,
+  // false = real ads for published users. Your own device still shows TEST ads
+  // if its ID is listed in `testingDevices` below, so you never tap a live ad.
+  testMode: false,
+
+  // Device IDs that should always get test ads even in production. Get yours
+  // from Android Studio Logcat (search "setTestDeviceIds") and paste it here,
+  // e.g. testingDevices: ['33BE2250B43518CCDA7DE426D04EE231'].
+  testingDevices: [],
 
   // AdMob App ID (must also be set in AndroidManifest.xml, see ANDROID.md).
   appId: 'ca-app-pub-8399875310081174~2034833058',

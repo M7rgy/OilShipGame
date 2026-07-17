@@ -31,7 +31,10 @@ const Ads = (function () {
         && cap.Plugins && cap.Plugins.AdMob) {
       admob = cap.Plugins.AdMob;
       try {
-        await admob.initialize({ initializeForTesting: !!cfg().testMode });
+        await admob.initialize({
+          initializeForTesting: !!cfg().testMode,
+          testingDevices: cfg().testingDevices || []
+        });
         native = true;
       } catch (e) {
         native = false;
