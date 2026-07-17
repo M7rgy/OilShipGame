@@ -3,9 +3,11 @@
   "version": "0.1.0",
   "description": "A 2D physics-based side-scroller: pilot an oil cargo ship through the Strait of Hormuz, dodging naval mines and tracking missiles.",
   "main": "electron/main.js",
+  "author": "Hormuz Escape Team",
   "scripts": {
     "start": "electron .",
     "test:render": "node test/render-check.js",
+    "icon": "node tools/make-icon.js",
     "dist": "electron-builder",
     "dist:win": "electron-builder --win",
     "dist:linux": "electron-builder --linux",
@@ -32,9 +34,11 @@
       "electron/**/*",
       "src/**/*",
       "index.html",
-      "package.json"
+      "package.json",
+      "node_modules/phaser/dist/phaser.min.js"
     ],
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         "nsis",
         "portable"
@@ -45,16 +49,24 @@
       "deleteAppDataOnUninstall": true
     },
     "linux": {
+      "icon": "build/icon.png",
       "target": [
         "AppImage"
       ],
       "category": "Game"
     },
     "mac": {
+      "icon": "build/icon.png",
       "target": [
         "dmg"
       ],
       "category": "public.app-category.games"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "M7rgy",
+      "repo": "OilShipGame",
+      "releaseType": "draft"
     }
   },
   "dependencies": {

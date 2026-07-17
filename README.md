@@ -85,6 +85,30 @@ Packaging is handled by electron-builder using the `build` section of
 package.json. Cross-compiling Windows builds from Linux/macOS generally
 works; macOS builds must be made on macOS.
 
+The app icon is generated procedurally (no image editor needed) into
+`build/icon.ico` / `build/icon.png`; regenerate after tweaking the artwork
+in `tools/make-icon.js`:
+
+```bash
+npm run icon
+```
+
+### Automated releases
+
+`.github/workflows/release.yml` builds Windows, Linux, and macOS binaries in
+parallel and attaches them to a **draft** GitHub Release. To cut a release,
+tag a commit and push the tag:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+(You can also trigger it manually from the Actions tab.) When the run
+finishes, open the draft release under **Releases**, review it, and publish.
+The builds are unsigned, so direct downloaders will see an "unknown
+publisher" prompt until a code-signing certificate is configured.
+
 ## Rendering smoke test
 
 A headless-Chromium check that boots the real game, plays through menu →
@@ -112,8 +136,10 @@ src/
   util/Storage.js          localStorage settings + high scores, Steam helper
   scenes/                  Boot, MainMenu, Settings, Game, Pause, GameOver, Victory
 index.html                 Renderer entry page
+tools/make-icon.js         Procedural app-icon generator (build/icon.ico|png)
 test/render-check.js       Headless rendering smoke test
-.github/workflows/ci.yml   CI: render smoke test on every push
+.github/workflows/ci.yml       CI: render smoke test on every push
+.github/workflows/release.yml  CI: build + attach binaries on version tags
 ```
 
 ## Steam

@@ -1,0 +1,48 @@
+name: Release
+
+# Builds desktop binaries for Windows, Linux, and macOS and attaches them to a
+# GitHub Release. Trigger by pushing a version tag (e.g. `git tag v0.1.0 &&
+# git push origin v0.1.0`), or run manually from the Actions tab.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write  # electron-builder needs this to create/upload the release
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows
+          - os: ubuntu-latest
+            name: linux
+          - os: macos-latest
+            name: macos
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate app icon
+        run: npm run icon
+
+      - name: Build and publish (${{ matrix.name }})
+        # electron-builder detects the host platform and builds its native
+        # targets. --publish always finds-or-creates the draft release for the
+        # tag and uploads the artifacts to it.
+        run: npx electron-builder --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
