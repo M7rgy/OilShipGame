@@ -11,6 +11,7 @@ const Textures = {
     this.radar(scene);
     this.mine(scene);
     this.missile(scene);
+    this.enemies(scene);
     this.particles(scene);
     this.water(scene);
     this.coastlines(scene);
@@ -229,6 +230,105 @@ const Textures = {
 
     g.generateTexture('missile', 58, 20);
     g.destroy();
+  },
+
+  // ---------------------------------------------------------------- enemies
+
+  /** Hostile surface and air units. All face left (toward the player). */
+  enemies(scene) {
+    // patrol gunboat, 96x34
+    const b = this._g(scene);
+    b.fillStyle(0x2e3a42, 1); // hull
+    b.beginPath();
+    b.moveTo(4, 22); b.lineTo(10, 30); b.lineTo(88, 30); b.lineTo(94, 22);
+    b.closePath();
+    b.fillPath();
+    b.fillStyle(0x46545e, 1); // deckhouse
+    b.fillRect(34, 12, 30, 10);
+    b.fillStyle(0x5d6c76, 1);
+    b.fillRect(42, 6, 14, 7);
+    b.fillStyle(0x18424f, 1); // windows
+    b.fillRect(44, 8, 4, 3);
+    b.fillRect(50, 8, 4, 3);
+    b.fillStyle(0x252d33, 1); // forward gun (points left)
+    b.fillRect(18, 16, 12, 5);
+    b.fillRect(8, 17, 12, 3);
+    b.fillStyle(0xc94b3f, 1); // hull stripe
+    b.fillRect(10, 26, 78, 3);
+    b.generateTexture('gunboat', 98, 34);
+    b.destroy();
+
+    // cannon shell, 12x5
+    const sh = this._g(scene);
+    sh.fillStyle(0x22282e, 1);
+    sh.fillRect(2, 0, 8, 5);
+    sh.fillStyle(0xffb347, 1);
+    sh.fillCircle(2, 2.5, 2.4); // tracer glow at the nose (flies left)
+    sh.generateTexture('shell', 12, 5);
+    sh.destroy();
+
+    // strafing jet, 74x22, flying left
+    const j = this._g(scene);
+    j.fillStyle(0x3c4750, 1); // fuselage
+    j.beginPath();
+    j.moveTo(2, 11); j.lineTo(16, 6); j.lineTo(64, 6); j.lineTo(72, 11);
+    j.lineTo(64, 15); j.lineTo(16, 15);
+    j.closePath();
+    j.fillPath();
+    j.fillStyle(0x2a333a, 1); // wing
+    j.beginPath();
+    j.moveTo(28, 10); j.lineTo(52, 10); j.lineTo(60, 20); j.lineTo(38, 20);
+    j.closePath();
+    j.fillPath();
+    j.fillStyle(0x2a333a, 1); // tail
+    j.beginPath();
+    j.moveTo(58, 7); j.lineTo(70, 0); j.lineTo(70, 7);
+    j.closePath();
+    j.fillPath();
+    j.fillStyle(0x8fd0e8, 1); // canopy
+    j.fillEllipse(18, 8, 12, 5);
+    j.fillStyle(0xffb347, 0.9); // exhaust
+    j.fillCircle(71, 11, 3);
+    j.generateTexture('jet', 76, 22);
+    j.destroy();
+
+    // falling bomb, 10x18
+    const bo = this._g(scene);
+    bo.fillStyle(0x22282e, 1);
+    bo.fillEllipse(5, 7, 9, 13);
+    bo.fillStyle(0x46545e, 1);
+    bo.fillRect(2, 13, 6, 4); // tail fins
+    bo.fillStyle(0xc94b3f, 1);
+    bo.fillRect(3, 2, 4, 3); // nose band
+    bo.generateTexture('bomb', 10, 18);
+    bo.destroy();
+
+    // blockade destroyer (level 5 boss), 250x64, facing left
+    const d = this._g(scene);
+    d.fillStyle(0x232b31, 1); // hull
+    d.beginPath();
+    d.moveTo(2, 40); d.lineTo(14, 58); d.lineTo(238, 58); d.lineTo(248, 40);
+    d.closePath();
+    d.fillPath();
+    d.fillStyle(0x39444d, 1); // main deck structure
+    d.fillRect(70, 22, 110, 18);
+    d.fillStyle(0x46545e, 1); // bridge tower
+    d.fillRect(100, 6, 40, 18);
+    d.fillStyle(0x18424f, 1);
+    for (let i = 0; i < 4; i++) {
+      d.fillRect(104 + i * 9, 10, 5, 4); // bridge windows
+    }
+    d.fillStyle(0x252d33, 1); // forward missile ramps
+    d.fillRect(30, 28, 34, 8);
+    d.fillRect(20, 24, 26, 6);
+    d.fillStyle(0x252d33, 1); // aft gun
+    d.fillRect(190, 26, 26, 8);
+    d.fillStyle(0x101519, 1); // radar mast
+    d.fillRect(118, -4, 4, 12);
+    d.fillStyle(0xc94b3f, 1); // warning stripes
+    d.fillRect(14, 52, 224, 4);
+    d.generateTexture('destroyer', 250, 66);
+    d.destroy();
   },
 
   // -------------------------------------------------------------- particles

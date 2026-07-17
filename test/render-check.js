@@ -190,6 +190,36 @@ async function main() {
       fail('no mines were spawned');
     }
 
+    // 6. settings menu opens, toggles, and persists to localStorage
+    await page.evaluate(() => { window.game.scene.stop('Game'); window.game.scene.start('MainMenu'); });
+    await page.waitForFunction(() => window.game.scene.isActive('MainMenu'), null, { timeout: 8000 });
+    await page.keyboard.press('KeyS');
+    await page.waitForFunction(() => window.game.scene.isActive('Settings'), null, { timeout: 8000 });
+    const settleKey = async (k) => { await page.keyboard.press(k); await page.waitForTimeout(70); };
+    await settleKey('ArrowDown'); // Screen Shake
+    await settleKey('ArrowLeft'); // off
+    await settleKey('Enter');     // save + back
+    const savedSettings = await page.evaluate(() => JSON.parse(localStorage.getItem('hormuz-settings') || 'null'));
+    if (!savedSettings || savedSettings.shake !== false) {
+      fail(`settings did not persist: ${JSON.stringify(savedSettings)}`);
+    } else {
+      console.log('Settings persisted:', JSON.stringify(savedSettings));
+    }
+
+    // 7. endless mode starts, streams hazards, and shows the distance HUD
+    await page.waitForFunction(() => window.game.scene.isActive('MainMenu'), null, { timeout: 8000 });
+    await page.keyboard.press('KeyE');
+    await page.waitForFunction(() => window.game.scene.isActive('Game'), null, { timeout: 15000 });
+    const endless = await page.evaluate(() => {
+      const s = window.game.scene.getScene('Game');
+      return { endless: s.endless, hasDistText: !!s.distText, mines: s.mines.length };
+    });
+    console.log('Endless mode:', JSON.stringify(endless));
+    if (!endless.endless || !endless.hasDistText || endless.mines < 1) {
+      fail('endless mode did not initialise correctly');
+    }
+    await page.screenshot({ path: path.join(SHOTS, '6-endless.png') });
+
     if (pageErrors.length) {
       fail('page errors were logged');
     } else if (process.exitCode !== 1) {

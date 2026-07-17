@@ -43,16 +43,23 @@ class MainMenuScene extends Phaser.Scene {
       fontStyle: 'italic'
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, height * 0.80,
+    this.add.text(width / 2, height * 0.78,
       'ARROWS / WASD — helm      SPACE — decoy flare      P — pause      M — mute      (gamepad supported)', {
       fontFamily: 'monospace',
       fontSize: '16px',
       color: '#bcd2e0'
     }).setOrigin(0.5);
 
-    this.startText = this.add.text(width / 2, height * 0.90, 'PRESS  ENTER  TO  SET  SAIL', {
+    const best = Store.highScores()[0];
+    this.add.text(width / 2, height * 0.84,
+      best ? `BEST  ${best.score}  (${best.label})` : '', {
+      fontFamily: 'monospace', fontSize: '16px', color: '#8fb4cc'
+    }).setOrigin(0.5);
+
+    this.startText = this.add.text(width / 2, height * 0.90,
+      'ENTER — set sail      E — endless gauntlet      S — settings', {
       fontFamily: 'monospace',
-      fontSize: '26px',
+      fontSize: '22px',
       color: '#ffd27a'
     }).setOrigin(0.5);
 
@@ -74,19 +81,27 @@ class MainMenuScene extends Phaser.Scene {
       ease: 'Sine.easeInOut'
     });
 
-    const begin = () => {
+    const begin = (mode) => {
       Sound.init();
       Sound.resume();
+      const st = Store.settings();
+      Sound.setVolume(st.volume);
+      this.registry.set('mode', mode === 'endless' ? 'endless' : null);
       this.registry.set('levelIndex', 0);
       this.registry.set('hull', 100);
       this.registry.set('score', 0);
       this.scene.start('Game');
     };
-    this.input.keyboard.on('keydown-ENTER', begin);
-    this.input.keyboard.on('keydown-SPACE', begin);
-    this.input.on('pointerdown', begin);
+    this.input.keyboard.on('keydown-ENTER', () => begin());
+    this.input.keyboard.on('keydown-SPACE', () => begin());
+    this.input.keyboard.on('keydown-E', () => begin('endless'));
+    this.input.keyboard.on('keydown-S', () => {
+      Sound.init();
+      this.scene.start('Settings');
+    });
+    this.input.on('pointerdown', () => begin());
     if (this.input.gamepad) {
-      this.input.gamepad.once('down', begin);
+      this.input.gamepad.once('down', () => begin());
     }
   }
 

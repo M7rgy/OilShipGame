@@ -1,8 +1,11 @@
 'use strict';
 
-const { app, BrowserWindow, Menu } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain } = require('electron');
 const path = require('path');
 const steamConfig = require('./steamworks.config.json');
+
+// Steamworks client, populated by initSteamworks() when enabled.
+let steamClient = null;
 
 // Steamworks bootstrap (placeholder).
 // When shipping on Steam, install the `steamworks.js` package and initialise it
@@ -19,12 +22,26 @@ function initSteamworks() {
   try {
     // eslint-disable-next-line global-require
     const steamworks = require('steamworks.js');
-    return steamworks.init(steamConfig.appId);
+    steamClient = steamworks.init(steamConfig.appId);
+    return steamClient;
   } catch (err) {
     console.warn('[steam] Steamworks not available, running without Steam:', err.message);
     return null;
   }
 }
+
+// Renderer -> main bridge: fire a Steam achievement by API name. A no-op
+// when Steamworks is disabled or unavailable, so the game runs fine off-Steam.
+ipcMain.on('steam-achievement', (_event, id) => {
+  if (!steamClient || typeof id !== 'string') {
+    return;
+  }
+  try {
+    steamClient.achievement.activate(id);
+  } catch (err) {
+    console.warn('[steam] achievement failed:', err.message);
+  }
+});
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -39,7 +56,8 @@ function createWindow() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true
+      sandbox: true,
+      preload: path.join(__dirname, 'preload.js')
     }
   });
 

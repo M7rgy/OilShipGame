@@ -26,7 +26,7 @@ const config = {
   input: {
     gamepad: true
   },
-  scene: [BootScene, MainMenuScene, GameScene, PauseScene, GameOverScene, VictoryScene]
+  scene: [BootScene, MainMenuScene, SettingsScene, GameScene, PauseScene, GameOverScene, VictoryScene]
 };
 
 window.game = new Phaser.Game(config);

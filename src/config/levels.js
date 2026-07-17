@@ -21,6 +21,9 @@
  * missileTurn : missile homing turn rate deg/s (higher = harder to shake)
  * currentForce: mean water-current acceleration px/s^2 applied to the ship
  * currentShift: seconds between current direction changes (lower = choppier)
+ * boatEvery  : average seconds between patrol-boat spawns (0 = none)
+ * jetEvery   : average seconds between strafing-jet runs (0 = none)
+ * boss       : spawn the blockade destroyer near the finish of this leg
  * waterTint / skyTop / skyBottom: palette so each leg of the strait looks distinct
  */
 const LEVELS = [
@@ -39,6 +42,8 @@ const LEVELS = [
     missileTurn: 40,
     currentForce: 14,
     currentShift: 6.0,
+    boatEvery: 0,
+    jetEvery: 0,
     waterTint: 0x0d4f6e,
     skyTop: 0x2a6f97,
     skyBottom: 0xf2c078
@@ -58,6 +63,8 @@ const LEVELS = [
     missileTurn: 52,
     currentForce: 24,
     currentShift: 4.5,
+    boatEvery: 14,
+    jetEvery: 0,
     waterTint: 0x0b4460,
     skyTop: 0x1f5f8b,
     skyBottom: 0xe8a05d
@@ -77,6 +84,8 @@ const LEVELS = [
     missileTurn: 66,
     currentForce: 36,
     currentShift: 3.2,
+    boatEvery: 11,
+    jetEvery: 18,
     waterTint: 0x093a55,
     skyTop: 0x174a75,
     skyBottom: 0xc97b4a
@@ -96,6 +105,8 @@ const LEVELS = [
     missileTurn: 80,
     currentForce: 50,
     currentShift: 2.4,
+    boatEvery: 9,
+    jetEvery: 14,
     waterTint: 0x072e46,
     skyTop: 0x0e3556,
     skyBottom: 0x8c4c3a
@@ -115,6 +126,9 @@ const LEVELS = [
     missileTurn: 95,
     currentForce: 66,
     currentShift: 1.7,
+    boatEvery: 7,
+    jetEvery: 11,
+    boss: true,
     waterTint: 0x05243a,
     skyTop: 0x081f38,
     skyBottom: 0x5e2f33
@@ -123,3 +137,22 @@ const LEVELS = [
 
 // px per "metre" of strait distance
 const WORLD_SCALE = 10;
+
+/**
+ * Endless Gauntlet: a marathon run tuned past level 5. No hull patching,
+ * no finish in practical reach -- survive as long as possible, score accrues
+ * with distance. Uses level 5's water/sky so textures already exist.
+ */
+const ENDLESS_LEVEL = Object.assign({}, LEVELS[4], {
+  id: 5,
+  name: 'Endless Gauntlet',
+  briefing: 'No convoy. No relief. Sail until the sea takes you.',
+  endless: true,
+  boss: false,
+  distance: 60000,
+  mineEvery: 250,
+  missileEvery: 4.5,
+  boatEvery: 8,
+  jetEvery: 12,
+  currentForce: 60
+});

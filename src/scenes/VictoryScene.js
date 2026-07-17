@@ -53,6 +53,23 @@ class VictoryScene extends Phaser.Scene {
       fontFamily: 'monospace', fontSize: '26px', color: '#ffd27a'
     }).setOrigin(0.5);
 
+    const rank = this.registry.get('lastRank');
+    if (rank !== undefined && rank >= 0) {
+      const nb = this.add.text(width / 2, height * 0.40, `NEW #${rank + 1} HIGH SCORE!`, {
+        fontFamily: 'monospace', fontSize: '18px', color: '#37e07a'
+      }).setOrigin(0.5);
+      this.tweens.add({ targets: nb, scale: 1.12, duration: 500, yoyo: true, repeat: -1 });
+    }
+
+    // top-runs table
+    const scores = Store.highScores();
+    scores.slice(0, 5).forEach((s, i) => {
+      this.add.text(width / 2, height * 0.46 + i * 20,
+        `${i + 1}.  ${String(s.score).padStart(6)}   ${s.label}`, {
+        fontFamily: 'monospace', fontSize: '14px', color: '#d8e2ea'
+      }).setOrigin(0.5);
+    });
+
     const again = this.add.text(width / 2, height * 0.90, 'ENTER — sail again        ESC — main menu', {
       fontFamily: 'monospace', fontSize: '22px', color: '#bcd2e0'
     }).setOrigin(0.5);
@@ -61,9 +78,11 @@ class VictoryScene extends Phaser.Scene {
     Sound.fanfare();
 
     this.input.keyboard.on('keydown-ENTER', () => {
+      this.registry.set('mode', null);
       this.registry.set('levelIndex', 0);
       this.registry.set('hull', 100);
       this.registry.set('score', 0);
+      this.registry.set('lastRank', -1);
       this.scene.start('Game');
     });
     this.input.keyboard.on('keydown-ESC', () => this.scene.start('MainMenu'));

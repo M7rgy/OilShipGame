@@ -14,8 +14,10 @@ class GameScene extends Phaser.Scene {
   }
 
   create() {
-    this.cfg = LEVELS[this.registry.get('levelIndex')];
+    this.endless = this.registry.get('mode') === 'endless';
+    this.cfg = this.endless ? ENDLESS_LEVEL : LEVELS[this.registry.get('levelIndex')];
     const cfg = this.cfg;
+    this.settings = Store.settings();
 
     this.worldWidth = cfg.distance * WORLD_SCALE;
     this.finishX = this.worldWidth - 200;
@@ -68,19 +70,57 @@ class GameScene extends Phaser.Scene {
       delay: cfg.missileEvery * 1000,
       loop: true,
       startAt: cfg.missileEvery * 500, // first launch comes at half interval
-      callback: () => this.launchMissile()
+      callback: () => {
+        // endless mode ramps up: extra missiles per volley as time passes
+        const volley = this.endless ? Math.min(3, 1 + Math.floor(this.time.now / 60000)) : 1;
+        for (let i = 0; i < volley; i++) {
+          this.time.delayedCall(i * 400, () => this.launchMissile());
+        }
+      }
     });
+
+    // patrol boats and strafing jets (levels 2+ / 3+)
+    this.boats = [];
+    this.shells = [];
+    this.jets = [];
+    this.bombs = [];
+    if (cfg.boatEvery > 0) {
+      this.time.addEvent({
+        delay: cfg.boatEvery * 1000,
+        loop: true,
+        startAt: cfg.boatEvery * 400,
+        callback: () => this.spawnBoat()
+      });
+    }
+    if (cfg.jetEvery > 0) {
+      this.time.addEvent({
+        delay: cfg.jetEvery * 1000,
+        loop: true,
+        callback: () => this.spawnJet()
+      });
+    }
+
+    // blockade destroyer gauntlet at the end of a boss level
+    this.boss = null;
+    this.bossSpawned = false;
 
     this.gameOverStarted = false;
     this.levelDone = false;
+    this.tookDamage = false;
+    this.endlessScored = 0; // px of travel already banked as score
 
     Sound.init();
     Sound.resume();
+    Sound.setVolume(this.settings.volume);
     Sound.startEngine();
+    if (this.settings.music) {
+      Sound.startMusic();
+    }
 
     this.events.once('shutdown', () => {
       Sound.stopEngine();
       Sound.stopLockOn();
+      Sound.stopMusic();
     });
 
     // level briefing card
@@ -176,17 +216,29 @@ class GameScene extends Phaser.Scene {
   buildMines() {
     const cfg = this.cfg;
     this.mines = [];
-    const rnd = new Phaser.Math.RandomDataGenerator([`level-${cfg.id}`]);
+    this.mineRnd = new Phaser.Math.RandomDataGenerator([`level-${cfg.id}`]);
 
-    for (let x = 900; x < this.finishX - 300; x += cfg.mineEvery + rnd.between(-80, 80)) {
-      if (rnd.frac() > cfg.mineChance) {
-        continue;
-      }
-      const slots = rnd.frac() < 0.3 ? 2 : 1; // occasional double mine
-      for (let s = 0; s < slots; s++) {
-        const y = rnd.between(cfg.passageTop + 50, cfg.passageBottom - 50);
-        this.spawnMine(x + s * 60, y);
-      }
+    if (this.endless) {
+      // endless worlds are far too long to pre-build; mines stream in ahead
+      // of the camera from update()
+      this.nextMineX = 900;
+      return;
+    }
+    for (let x = 900; x < this.finishX - 300; x += cfg.mineEvery + this.mineRnd.between(-80, 80)) {
+      this.rollMineCluster(x);
+    }
+  }
+
+  rollMineCluster(x) {
+    const cfg = this.cfg;
+    const rnd = this.mineRnd;
+    if (rnd.frac() > cfg.mineChance) {
+      return;
+    }
+    const slots = rnd.frac() < 0.3 ? 2 : 1; // occasional double mine
+    for (let s = 0; s < slots; s++) {
+      const y = rnd.between(cfg.passageTop + 50, cfg.passageBottom - 50);
+      this.spawnMine(x + s * 60, y);
     }
   }
 
@@ -211,34 +263,43 @@ class GameScene extends Phaser.Scene {
       ease: 'Sine.easeInOut'
     });
 
-    this.physics.add.overlap(this.ship, mine, () => this.hitMine(mine));
+    mine.collider = this.physics.add.overlap(this.ship, mine, () => this.hitMine(mine));
     this.mines.push(mine);
   }
 
   buildPickups() {
-    const cfg = this.cfg;
     this.pickups = [];
-    const rnd = new Phaser.Math.RandomDataGenerator([`pickups-${cfg.id}`]);
+    this.kitRnd = new Phaser.Math.RandomDataGenerator([`pickups-${this.cfg.id}`]);
 
-    for (let x = 1600; x < this.finishX - 500; x += 1400 + rnd.between(-200, 300)) {
-      if (rnd.frac() > 0.65) {
-        continue;
-      }
-      const key = rnd.frac() < 0.55 ? 'repairKit' : 'flareKit';
-      const y = rnd.between(cfg.passageTop + 60, cfg.passageBottom - 60);
-      const kit = this.physics.add.image(x, y, key).setDepth(5);
-      kit.kind = key;
-      kit.body.setAllowGravity(false);
-      kit.setImmovable(true);
-      kit.baseY = y;
-      kit.bobSeed = Math.random() * Math.PI * 2;
-      this.tweens.add({
-        targets: kit, angle: 6, duration: 1200 + Math.random() * 400,
-        yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
-      });
-      this.physics.add.overlap(this.ship, kit, () => this.collectPickup(kit));
-      this.pickups.push(kit);
+    if (this.endless) {
+      this.nextKitX = 1600;
+      return;
     }
+    for (let x = 1600; x < this.finishX - 500; x += 1400 + this.kitRnd.between(-200, 300)) {
+      this.rollPickup(x);
+    }
+  }
+
+  rollPickup(x) {
+    const cfg = this.cfg;
+    const rnd = this.kitRnd;
+    if (rnd.frac() > 0.65) {
+      return;
+    }
+    const key = rnd.frac() < 0.55 ? 'repairKit' : 'flareKit';
+    const y = rnd.between(cfg.passageTop + 60, cfg.passageBottom - 60);
+    const kit = this.physics.add.image(x, y, key).setDepth(5);
+    kit.kind = key;
+    kit.body.setAllowGravity(false);
+    kit.setImmovable(true);
+    kit.baseY = y;
+    kit.bobSeed = Math.random() * Math.PI * 2;
+    this.tweens.add({
+      targets: kit, angle: 6, duration: 1200 + Math.random() * 400,
+      yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+    });
+    kit.collider = this.physics.add.overlap(this.ship, kit, () => this.collectPickup(kit));
+    this.pickups.push(kit);
   }
 
   collectPickup(kit) {
@@ -260,6 +321,7 @@ class GameScene extends Phaser.Scene {
       speed: { min: 40, max: 140 }, scale: { start: 1.2, end: 0 },
       lifespan: 500, quantity: 10, stopAfter: 10
     }).setDepth(15);
+    kit.collider.destroy();
     kit.destroy();
   }
 
@@ -322,18 +384,19 @@ class GameScene extends Phaser.Scene {
     });
   }
 
-  launchMissile() {
+  launchMissile(fromX, fromY) {
     if (this.gameOverStarted || this.levelDone) {
       return;
     }
     const cfg = this.cfg;
     const cam = this.cameras.main;
-    // launch from just off the right edge, biased toward the shorelines
+    // default: launch from just off the right edge, biased toward the
+    // shorelines; the boss passes its own launch position
     const fromTop = Math.random() < 0.5;
-    const x = cam.scrollX + this.viewW + 60;
-    const y = fromTop
+    const x = fromX !== undefined ? fromX : cam.scrollX + this.viewW + 60;
+    const y = fromY !== undefined ? fromY : (fromTop
       ? Phaser.Math.Between(cfg.passageTop - 40, cfg.passageTop + 60)
-      : Phaser.Math.Between(cfg.passageBottom - 60, cfg.passageBottom + 40);
+      : Phaser.Math.Between(cfg.passageBottom - 60, cfg.passageBottom + 40));
 
     const missile = this.physics.add.image(x, y, 'missile').setDepth(7);
     missile.body.setSize(40, 12);
@@ -359,6 +422,165 @@ class GameScene extends Phaser.Scene {
 
     this.physics.add.overlap(this.ship, missile, () => this.hitMissile(missile));
     this.missiles.push(missile);
+  }
+
+  spawnBoat() {
+    if (this.gameOverStarted || this.levelDone) {
+      return;
+    }
+    const cfg = this.cfg;
+    const x = this.cameras.main.scrollX + this.viewW + 80;
+    const y = Phaser.Math.Between(cfg.passageTop + 60, cfg.passageBottom - 40);
+    const boat = this.physics.add.image(x, y, 'gunboat').setDepth(6);
+    boat.body.setSize(84, 24);
+    boat.body.setAllowGravity(false);
+    boat.setImmovable(true);
+    boat.setVelocityX(-(cfg.scrollSpeed + 45));
+    boat.baseY = y;
+    boat.bobSeed = Math.random() * Math.PI * 2;
+    boat.nextShotAt = this.time.now + 1800;
+    boat.collider = this.physics.add.overlap(this.ship, boat, () => this.hitBoat(boat));
+    this.boats.push(boat);
+  }
+
+  hitBoat(boat) {
+    if (!boat.active || this.gameOverStarted) {
+      return;
+    }
+    this.explode(boat.x, boat.y, true);
+    this.killBoat(boat);
+    this.damage(20);
+  }
+
+  killBoat(boat) {
+    boat.collider.destroy();
+    boat.destroy();
+  }
+
+  fireShell(fromX, fromY) {
+    const shell = this.physics.add.image(fromX, fromY, 'shell').setDepth(7);
+    shell.body.setAllowGravity(false);
+    const angle = Phaser.Math.Angle.Between(fromX, fromY, this.ship.x, this.ship.y);
+    shell.rotation = angle;
+    this.physics.velocityFromRotation(angle, 300, shell.body.velocity);
+    shell.collider = this.physics.add.overlap(this.ship, shell, () => {
+      if (!shell.active || this.gameOverStarted) {
+        return;
+      }
+      this.killShell(shell, true);
+      this.damage(14);
+    });
+    this.shells.push(shell);
+    // muzzle flash
+    this.add.particles(fromX, fromY, 'spark', {
+      speed: { min: 30, max: 90 }, scale: { start: 1.1, end: 0 },
+      lifespan: 220, quantity: 5, stopAfter: 5
+    }).setDepth(8);
+    Sound.cannon();
+  }
+
+  killShell(shell, exploded) {
+    if (exploded) {
+      this.add.particles(shell.x, shell.y, 'spark', {
+        speed: { min: 40, max: 120 }, scale: { start: 1.2, end: 0 },
+        lifespan: 320, quantity: 8, stopAfter: 8
+      }).setDepth(15);
+    }
+    shell.collider.destroy();
+    shell.destroy();
+  }
+
+  spawnJet() {
+    if (this.gameOverStarted || this.levelDone) {
+      return;
+    }
+    const x = this.cameras.main.scrollX + this.viewW + 100;
+    const y = Phaser.Math.Between(this.cfg.passageTop - 80, this.cfg.passageTop - 30);
+    const jet = this.physics.add.image(x, y, 'jet').setDepth(8);
+    jet.body.setAllowGravity(false);
+    jet.setVelocityX(-390);
+    jet.dropped = 0;
+    jet.trail = this.add.particles(0, 0, 'smoke', {
+      speed: { min: 4, max: 16 },
+      scale: { start: 0.35, end: 1.0 },
+      alpha: { start: 0.3, end: 0 },
+      lifespan: 700,
+      frequency: 30
+    }).setDepth(7);
+    jet.trail.startFollow(jet, 36, 0);
+    this.jets.push(jet);
+  }
+
+  killJet(jet) {
+    jet.trail.stopFollow();
+    jet.trail.stop();
+    const trail = jet.trail;
+    this.time.delayedCall(800, () => trail.destroy());
+    jet.destroy();
+  }
+
+  dropBomb(x, y, vx) {
+    const bomb = this.physics.add.image(x, y, 'bomb').setDepth(7);
+    bomb.body.setAllowGravity(false);
+    bomb.setVelocity(vx, 40);
+    bomb.body.setAccelerationY(300); // gravity pull
+    bomb.collider = this.physics.add.overlap(this.ship, bomb, () => {
+      if (!bomb.active || this.gameOverStarted) {
+        return;
+      }
+      this.explode(bomb.x, bomb.y, false);
+      this.killBomb(bomb);
+      this.damage(20);
+    });
+    this.bombs.push(bomb);
+  }
+
+  killBomb(bomb) {
+    bomb.collider.destroy();
+    bomb.destroy();
+  }
+
+  spawnBoss() {
+    this.bossSpawned = true;
+    const y = (this.cfg.passageTop + this.cfg.passageBottom) / 2;
+    this.boss = this.add.image(this.finishX - 900, y, 'destroyer').setDepth(6);
+    this.tweens.add({
+      targets: this.boss, y: y + 8, angle: 1, duration: 2400,
+      yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+    });
+    this.floatText(this.ship.x + 260, this.viewH / 2 - 80, 'BLOCKADE AHEAD', '#ff5544');
+    this.shake(300, 0.006);
+
+    this.bossTimers = [
+      this.time.addEvent({
+        delay: 4200,
+        loop: true,
+        callback: () => {
+          if (this.bossActive()) {
+            this.launchMissile(this.boss.x - 60, this.boss.y - 16);
+            this.time.delayedCall(350, () => {
+              if (this.bossActive()) {
+                this.launchMissile(this.boss.x - 40, this.boss.y - 8);
+              }
+            });
+          }
+        }
+      }),
+      this.time.addEvent({
+        delay: 2400,
+        loop: true,
+        callback: () => {
+          if (this.bossActive() && Math.abs(this.boss.x - this.ship.x) > 180) {
+            this.fireShell(this.boss.x - 100, this.boss.y - 6);
+          }
+        }
+      })
+    ];
+  }
+
+  bossActive() {
+    return this.boss && this.boss.active && !this.gameOverStarted && !this.levelDone
+      && this.ship.x < this.boss.x + 120;
   }
 
   buildHud() {
@@ -391,15 +613,21 @@ class GameScene extends Phaser.Scene {
     this.hullBar = this.add.rectangle(w * 0.40 + 54, 25, 160, 12, 0x37e07a)
       .setOrigin(0, 0.5).setScrollFactor(0).setDepth(100);
 
-    // distance bar
-    this.add.text(w * 0.66, 16, 'STRAIT', {
-      fontFamily: 'monospace', fontSize: '15px', color: '#9fb4c4'
-    }).setScrollFactor(0).setDepth(100);
-    this.add.rectangle(w * 0.66 + 70 + 102, 25, 204, 16, 0x0b2233)
-      .setScrollFactor(0).setDepth(99);
-    this.distBar = this.add.rectangle(w * 0.66 + 72, 25, 200, 12, 0x5fb6e8)
-      .setOrigin(0, 0.5).setScrollFactor(0).setDepth(100);
-    this.shipDot = this.add.image(w * 0.66 + 72, 25, 'spark').setScrollFactor(0).setDepth(101);
+    // distance readout: progress bar for a leg, raw distance when endless
+    if (this.endless) {
+      this.distText = this.add.text(w * 0.66, 16, 'DIST 0 m', {
+        fontFamily: 'monospace', fontSize: '17px', color: '#5fb6e8'
+      }).setScrollFactor(0).setDepth(100);
+    } else {
+      this.add.text(w * 0.66, 16, 'STRAIT', {
+        fontFamily: 'monospace', fontSize: '15px', color: '#9fb4c4'
+      }).setScrollFactor(0).setDepth(100);
+      this.add.rectangle(w * 0.66 + 70 + 102, 25, 204, 16, 0x0b2233)
+        .setScrollFactor(0).setDepth(99);
+      this.distBar = this.add.rectangle(w * 0.66 + 72, 25, 200, 12, 0x5fb6e8)
+        .setOrigin(0, 0.5).setScrollFactor(0).setDepth(100);
+      this.shipDot = this.add.image(w * 0.66 + 72, 25, 'spark').setScrollFactor(0).setDepth(101);
+    }
 
     // current indicator
     this.currentText = this.add.text(w - pad, 16, 'CURRENT →', {
@@ -461,6 +689,7 @@ class GameScene extends Phaser.Scene {
       return;
     }
     this.explode(mine.x, mine.y, true);
+    mine.collider.destroy();
     mine.glow.destroy();
     mine.destroy();
     // mine blast shoves the hull away
@@ -497,16 +726,27 @@ class GameScene extends Phaser.Scene {
     missile.destroy();
   }
 
+  /** Camera shake honouring the settings toggle. */
+  shake(duration, intensity) {
+    if (this.settings.shake && this.cameras && this.cameras.main) {
+      this.cameras.main.shake(duration, intensity);
+    }
+  }
+
   damage(amount) {
+    if (this.gameOverStarted || this.levelDone) {
+      return;
+    }
     const now = this.time.now;
     if (now < this.invulnUntil) {
       return;
     }
     this.invulnUntil = now + 1100;
+    this.tookDamage = true;
     this.hull = Math.max(0, this.hull - amount);
     this.registry.set('hull', this.hull);
     this.updateHullBar();
-    this.cameras.main.shake(220, 0.012);
+    this.shake(220, 0.012);
     this.cameras.main.flash(120, 255, 80, 30);
 
     this.ship.setTintFill(0xffffff);
@@ -576,6 +816,13 @@ class GameScene extends Phaser.Scene {
       duration: 2400,
       ease: 'Sine.easeIn'
     });
+
+    // record a high score (endless runs and any run with points earned)
+    const label = this.endless
+      ? `Endless ${Math.round((this.ship.x - 220) / 10)}m`
+      : `Lv ${this.cfg.id}`;
+    const rank = Store.addHighScore(this.registry.get('score'), label);
+    this.registry.set('lastRank', rank);
     this.time.delayedCall(2600, () => this.scene.start('GameOver'));
   }
 
@@ -589,10 +836,21 @@ class GameScene extends Phaser.Scene {
 
     const idx = this.registry.get('levelIndex');
     this.registry.set('score', this.registry.get('score') + Math.round(this.hull * this.cfg.id));
+    if (!this.tookDamage) {
+      this.registry.set('score', this.registry.get('score') + 200);
+      this.floatText(this.ship.x, this.ship.y - 70, 'PERFECT LEG +200', '#37e07a');
+      steamAchievement('ACH_UNTOUCHED');
+    }
+    if (idx === 0) {
+      steamAchievement('ACH_FIRST_ESCAPE');
+    }
     // patch the hull between legs, never above 100
     this.registry.set('hull', Math.min(100, this.hull + 25));
 
-    if (idx >= LEVELS.length - 1) {
+    if (this.endless || idx >= LEVELS.length - 1) {
+      steamAchievement('ACH_FULL_TRANSIT');
+      const rank = Store.addHighScore(this.registry.get('score'), 'Full Transit');
+      this.registry.set('lastRank', rank);
       this.time.delayedCall(900, () => this.scene.start('Victory'));
     } else {
       this.registry.set('levelIndex', idx + 1);
@@ -708,7 +966,7 @@ class GameScene extends Phaser.Scene {
         this.hull = Math.max(0, this.hull - 5);
         this.registry.set('hull', this.hull);
         this.updateHullBar();
-        this.cameras.main.shake(120, 0.005);
+        this.shake(120, 0.005);
         if (this.hull <= 0) {
           this.sinkShip();
           return;
@@ -798,11 +1056,127 @@ class GameScene extends Phaser.Scene {
       this.warnText.setVisible(false);
     }
 
-    // ---- progress
-    const k = Phaser.Math.Clamp(ship.x / this.finishX, 0, 1);
-    this.shipDot.x = this.distBar.x + 200 * k;
-    if (ship.x >= this.finishX) {
-      this.completeLevel();
+    // ---- patrol boats cruise and fire aimed shells
+    for (let i = this.boats.length - 1; i >= 0; i--) {
+      const b = this.boats[i];
+      if (!b.active) {
+        this.boats.splice(i, 1);
+        continue;
+      }
+      b.y = b.baseY + Math.sin(time * 0.0015 + b.bobSeed) * 7;
+      if (time > b.nextShotAt && b.x > ship.x + 120 && b.x < cam.scrollX + this.viewW) {
+        b.nextShotAt = time + 2600 + Math.random() * 900;
+        this.fireShell(b.x - 44, b.y - 8);
+      }
+      if (b.x < cam.scrollX - 200) {
+        this.killBoat(b);
+        this.boats.splice(i, 1);
+      }
+    }
+
+    for (let i = this.shells.length - 1; i >= 0; i--) {
+      const s = this.shells[i];
+      if (!s.active) {
+        this.shells.splice(i, 1);
+        continue;
+      }
+      if (s.x < cam.scrollX - 60 || s.x > cam.scrollX + this.viewW + 200
+          || s.y < -30 || s.y > this.viewH + 30) {
+        this.killShell(s, false);
+        this.shells.splice(i, 1);
+      }
+    }
+
+    // ---- jets streak over and drop bomb sticks
+    for (let i = this.jets.length - 1; i >= 0; i--) {
+      const j = this.jets[i];
+      if (!j.active) {
+        this.jets.splice(i, 1);
+        continue;
+      }
+      if (j.dropped < 3 && j.x < ship.x + 320 && j.x > ship.x - 60) {
+        if (time > (j.nextDropAt || 0)) {
+          j.nextDropAt = time + 170;
+          j.dropped++;
+          this.dropBomb(j.x, j.y + 14, j.body.velocity.x * 0.35);
+        }
+      }
+      if (j.x < cam.scrollX - 200) {
+        this.killJet(j);
+        this.jets.splice(i, 1);
+      }
+    }
+
+    for (let i = this.bombs.length - 1; i >= 0; i--) {
+      const bo = this.bombs[i];
+      if (!bo.active) {
+        this.bombs.splice(i, 1);
+        continue;
+      }
+      bo.rotation = Math.atan2(bo.body.velocity.y, bo.body.velocity.x) - Math.PI / 2;
+      if (bo.y > cfg.passageBottom + 10) {
+        // splashes down harmlessly at the waterline of the rocks
+        this.add.particles(bo.x, bo.y, 'foam', {
+          speed: { min: 40, max: 120 }, scale: { start: 1.4, end: 0 },
+          lifespan: 450, quantity: 10, stopAfter: 10
+        }).setDepth(15);
+        this.killBomb(bo);
+        this.bombs.splice(i, 1);
+      }
+    }
+
+    // ---- blockade destroyer guards the finish of a boss leg
+    if (cfg.boss && !this.bossSpawned && ship.x > this.finishX - 2600) {
+      this.spawnBoss();
+    }
+
+    // ---- endless mode: stream hazards in ahead, cull far behind, bank score
+    if (this.endless) {
+      while (this.nextMineX < cam.scrollX + this.viewW + 900) {
+        this.rollMineCluster(this.nextMineX);
+        this.nextMineX += cfg.mineEvery + this.mineRnd.between(-80, 80);
+      }
+      while (this.nextKitX < cam.scrollX + this.viewW + 1200) {
+        this.rollPickup(this.nextKitX);
+        this.nextKitX += 1400 + this.kitRnd.between(-200, 300);
+      }
+      for (let i = this.mines.length - 1; i >= 0; i--) {
+        const mine = this.mines[i];
+        if (!mine.active) {
+          this.mines.splice(i, 1);
+        } else if (mine.x < cam.scrollX - 400) {
+          mine.collider.destroy();
+          mine.glow.destroy();
+          mine.destroy();
+          this.mines.splice(i, 1);
+        }
+      }
+      for (let i = this.pickups.length - 1; i >= 0; i--) {
+        const kit = this.pickups[i];
+        if (!kit.active) {
+          this.pickups.splice(i, 1);
+        } else if (kit.x < cam.scrollX - 400) {
+          kit.collider.destroy();
+          kit.destroy();
+          this.pickups.splice(i, 1);
+        }
+      }
+      // +10 score per 500px survived
+      const traveled = ship.x - 220;
+      if (traveled - this.endlessScored >= 500) {
+        const chunks = Math.floor((traveled - this.endlessScored) / 500);
+        this.endlessScored += chunks * 500;
+        this.registry.set('score', this.registry.get('score') + chunks * 10);
+        this.updateScoreHud();
+      }
+      this.distText.setText(`DIST ${Math.max(0, Math.round(traveled / 10))} m`);
+    } else {
+      // ---- progress toward the finish buoys
+      const k = Phaser.Math.Clamp(ship.x / this.finishX, 0, 1);
+      this.shipDot.x = this.distBar.x + 200 * k;
+      if (ship.x >= this.finishX) {
+        this.completeLevel();
+      }
     }
   }
 }

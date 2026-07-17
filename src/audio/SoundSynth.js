@@ -15,6 +15,8 @@ class SoundSynth {
     this.engine = null;
     this.lockLoop = null;
     this.muted = false;
+    this.baseVolume = 0.55;
+    this.music = null;
   }
 
   /** Lazily create the AudioContext (must happen after a user gesture). */
@@ -28,9 +30,17 @@ class SoundSynth {
     }
     this.ctx = new AC();
     this.master = this.ctx.createGain();
-    this.master.gain.value = 0.55;
+    this.master.gain.value = this.baseVolume;
     this.master.connect(this.ctx.destination);
     this.noiseBuffer = this._buildNoiseBuffer(2.0);
+  }
+
+  /** Master volume 0..1 (persisted by the settings menu). */
+  setVolume(v) {
+    this.baseVolume = Math.max(0, Math.min(1, v));
+    if (this.master && !this.muted) {
+      this.master.gain.setTargetAtTime(this.baseVolume, this.ctx.currentTime, 0.05);
+    }
   }
 
   resume() {
@@ -42,7 +52,7 @@ class SoundSynth {
   setMuted(muted) {
     this.muted = muted;
     if (this.master) {
-      this.master.gain.setTargetAtTime(muted ? 0 : 0.55, this.ctx.currentTime, 0.05);
+      this.master.gain.setTargetAtTime(muted ? 0 : this.baseVolume, this.ctx.currentTime, 0.05);
     }
   }
 
@@ -233,7 +243,92 @@ class SoundSynth {
     thump.stop(t + 0.65);
   }
 
+  // ------------------------------------------------------------------ music
+
+  /**
+   * Ambient music: a slow minor chord pad that drifts between four chords.
+   * Two detuned triangle oscillators per note through a gentle lowpass.
+   */
+  startMusic() {
+    if (!this.ctx || this.music) {
+      return;
+    }
+    const CHORDS = [
+      [110.0, 130.8, 164.8], // Am
+      [98.0, 123.5, 146.8],  // Gm-ish
+      [87.3, 110.0, 130.8],  // F
+      [103.8, 123.5, 155.6]  // G#dim-ish colour
+    ];
+    const bus = this.ctx.createGain();
+    bus.gain.value = 0.05;
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 900;
+    bus.connect(lp);
+    lp.connect(this.master);
+
+    let idx = 0;
+    const playChord = () => {
+      if (!this.music) {
+        return;
+      }
+      const notes = CHORDS[idx % CHORDS.length];
+      idx++;
+      const t = this.ctx.currentTime;
+      notes.forEach((freq) => {
+        [0, 4].forEach((det) => {
+          const osc = this.ctx.createOscillator();
+          osc.type = 'triangle';
+          osc.frequency.value = freq;
+          osc.detune.value = det;
+          const g = this.ctx.createGain();
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.linearRampToValueAtTime(0.5, t + 2.6);
+          g.gain.linearRampToValueAtTime(0.0001, t + 7.6);
+          osc.connect(g);
+          g.connect(bus);
+          osc.start(t);
+          osc.stop(t + 8);
+        });
+      });
+    };
+    this.music = { bus, lp, loop: setInterval(playChord, 6500) };
+    playChord();
+  }
+
+  stopMusic() {
+    if (!this.music) {
+      return;
+    }
+    clearInterval(this.music.loop);
+    const bus = this.music.bus;
+    bus.gain.setTargetAtTime(0, this.ctx.currentTime, 0.4);
+    this.music = null;
+  }
+
   // ------------------------------------------------------------------- misc
+
+  /** Muffled cannon report for gunboat / destroyer shells. */
+  cannon() {
+    if (!this.ctx || this.muted) {
+      return;
+    }
+    const t = this.ctx.currentTime;
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = this.noiseBuffer;
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(700, t);
+    lp.frequency.exponentialRampToValueAtTime(120, t + 0.22);
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.35, t);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.26);
+    noise.connect(lp);
+    lp.connect(gain);
+    gain.connect(this.master);
+    noise.start(t);
+    noise.stop(t + 0.3);
+  }
 
   /** Short metallic clank for non-fatal hull scrapes. */
   clank() {
