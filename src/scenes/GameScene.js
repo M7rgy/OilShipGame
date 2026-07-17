@@ -934,8 +934,12 @@ class GameScene extends Phaser.Scene {
       return;
     }
     this.levelDone = true;
+    // freeze the ship so it can't take damage during the CLEARED note / ad
+    this.ship.body.enable = false;
+    this.ship.body.setVelocity(0, 0);
     Sound.fanfare();
     Sound.stopLockOn();
+    Sound.setEngineThrottle(0);
 
     const idx = this.registry.get('levelIndex');
     this.registry.set('score', this.registry.get('score') + Math.round(this.hull * this.cfg.id));
@@ -975,7 +979,7 @@ class GameScene extends Phaser.Scene {
   // ------------------------------------------------------------------ update
 
   update(time, delta) {
-    if (this.gameOverStarted) {
+    if (this.gameOverStarted || this.levelDone) {
       return;
     }
     const dt = delta / 1000;
