@@ -109,6 +109,32 @@ finishes, open the draft release under **Releases**, review it, and publish.
 The builds are unsigned, so direct downloaders will see an "unknown
 publisher" prompt until a code-signing certificate is configured.
 
+## Play in the browser / itch.io
+
+The game runs unmodified in a browser, so it can be published on
+[itch.io](https://itch.io) as an **HTML5 game** — no download, players hit
+"Run game" and play in the page. Build the upload bundle:
+
+```bash
+npm run web        # -> dist-web/hormuz-escape-web.zip
+```
+
+Then on itch.io:
+
+1. **Dashboard → Create new project.**
+2. Set **Kind of project** to **HTML**.
+3. Under **Uploads**, upload `dist-web/hormuz-escape-web.zip` and tick
+   **"This file will be played in the browser."** (The zip has `index.html`
+   at its root, which itch.io requires.)
+4. Set **Embed options → Viewport dimensions** to **1280 × 720**, and enable
+   the **fullscreen button** (the game scales to fit either way).
+5. Add a title, description, and a screenshot or two, set pricing (free or
+   pay-what-you-want), then **Save & view page** and publish.
+
+To also offer a downloadable desktop version on the same page, upload the
+Windows/macOS/Linux binaries from a `npm run dist` build (or a GitHub
+release) as additional, non-browser files.
+
 ## Rendering smoke test
 
 A headless-Chromium check that boots the real game, plays through menu →
@@ -137,6 +163,7 @@ src/
   scenes/                  Boot, MainMenu, Settings, Game, Pause, GameOver, Victory
 index.html                 Renderer entry page
 tools/make-icon.js         Procedural app-icon generator (build/icon.ico|png)
+tools/make-web.js          Assembles the itch.io HTML5 bundle (dist-web/)
 test/render-check.js       Headless rendering smoke test
 .github/workflows/ci.yml       CI: render smoke test on every push
 .github/workflows/release.yml  CI: build + attach binaries on version tags

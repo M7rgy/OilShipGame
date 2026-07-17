@@ -8,6 +8,7 @@
     "start": "electron .",
     "test:render": "node test/render-check.js",
     "icon": "node tools/make-icon.js",
+    "web": "node tools/make-web.js",
     "dist": "electron-builder",
     "dist:win": "electron-builder --win",
     "dist:linux": "electron-builder --linux",
