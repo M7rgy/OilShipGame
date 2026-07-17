@@ -110,13 +110,24 @@ async function main() {
   try {
     await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'load' });
 
+    // 0. splash: shows instantly, waits for a gesture, then boots
+    await page.waitForFunction(
+      () => window.game && window.game.scene.isActive('Splash'),
+      null, { timeout: 15000 }
+    );
+    let paint = await canvasIsPainted(page);
+    console.log('Splash painted:', paint.reason);
+    if (!paint.ok) { fail('Splash canvas looks blank'); }
+    await page.screenshot({ path: path.join(SHOTS, '0-splash.png') });
+    await page.keyboard.press('Space'); // dismiss splash -> Boot -> MainMenu
+
     // 1. main menu
     await page.waitForFunction(
       () => window.game && window.game.scene.isActive('MainMenu'),
       null, { timeout: 15000 }
     );
     await page.waitForTimeout(800);
-    let paint = await canvasIsPainted(page);
+    paint = await canvasIsPainted(page);
     console.log('MainMenu painted:', paint.reason);
     if (!paint.ok) { fail('MainMenu canvas looks blank'); }
     await page.screenshot({ path: path.join(SHOTS, '1-menu.png') });

@@ -9,6 +9,8 @@ Everything is procedural: all graphics are generated at boot from Phaser
 primitives, and all sound is synthesized live with the Web Audio API. There
 are no image or audio assets.
 
+By M7rgy. MIT licensed.
+
 ## Controls
 
 | Key | Action |
@@ -168,7 +170,7 @@ src/
   gfx/Textures.js          Procedural texture generation
   ui/TouchControls.js      On-screen touch controls + tappable button helper
   util/Storage.js          localStorage settings + high scores, Steam helper
-  scenes/                  Boot, MainMenu, Settings, Game, Pause, GameOver, Victory
+  scenes/                  Splash, Boot, MainMenu, Settings, Game, Pause, GameOver, Victory
 index.html                 Renderer entry page
 tools/make-icon.js         Procedural app-icon generator (build/icon.ico|png)
 tools/make-web.js          Assembles the itch.io HTML5 bundle (dist-web/)
