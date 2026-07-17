@@ -14,10 +14,23 @@ const IS_TOUCH = params.has('touch')
   || (navigator.maxTouchPoints > 0)
   || ('ontouchstart' in window);
 
+// Adaptive canvas: keep a fixed 720 logical height (so all gameplay tuning
+// stays valid) but flex the width to the device's landscape aspect ratio, so
+// on a phone the game fills the screen instead of pillar-boxing. Desktop keeps
+// the classic 1280x720. Height-based so vertical layout never changes.
+const GAME_H = 720;
+let GAME_W = 1280;
+if (IS_TOUCH) {
+  const longSide = Math.max(window.innerWidth, window.innerHeight);
+  const shortSide = Math.min(window.innerWidth, window.innerHeight);
+  const aspect = Phaser.Math.Clamp((longSide / shortSide) || (16 / 9), 1.55, 2.4);
+  GAME_W = Math.round(GAME_H * aspect);
+}
+
 const config = {
   type: forceCanvas ? Phaser.CANVAS : Phaser.AUTO,
-  width: 1280,
-  height: 720,
+  width: GAME_W,
+  height: GAME_H,
   parent: 'game-container',
   backgroundColor: '#04121f',
   physics: {

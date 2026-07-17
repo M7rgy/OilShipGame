@@ -1,6 +1,15 @@
 'use strict';
 
 /**
+ * How far (logical px) to lift bottom-of-screen UI so a banner ad doesn't
+ * cover it. Zero when no ads are showing. Sized generously to clear a standard
+ * 50dp AdMob banner on high-density screens.
+ */
+function adBottomLift(scene) {
+  return (typeof Ads !== 'undefined' && Ads.active()) ? Math.round(scene.scale.height * 0.16) : 0;
+}
+
+/**
  * uiButton — a tappable/clickable labelled button used across menu scenes so
  * they work with touch as well as keyboard. Returns { bg, txt }.
  */

@@ -44,7 +44,8 @@ class MainMenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     const touch = typeof IS_TOUCH !== 'undefined' && IS_TOUCH;
-    this.add.text(width / 2, height * 0.76, touch
+    const lift = adBottomLift(this);
+    this.add.text(width / 2, height * 0.76 - lift, touch
       ? 'Drag the left side to steer  •  FLARE button  •  II to pause'
       : 'ARROWS / WASD — helm    SPACE — decoy flare    P — pause    M — mute    (gamepad supported)', {
       fontFamily: 'monospace',
@@ -53,7 +54,7 @@ class MainMenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     const best = Store.highScores()[0];
-    this.add.text(width / 2, height * 0.82,
+    this.add.text(width / 2, height * 0.82 - lift,
       best ? `BEST  ${best.score}  (${best.label})` : '', {
       fontFamily: 'monospace', fontSize: '16px', color: '#8fb4cc'
     }).setOrigin(0.5);
@@ -84,7 +85,7 @@ class MainMenuScene extends Phaser.Scene {
     };
 
     // tappable buttons (work with mouse and touch); keyboard shortcuts remain
-    const by = height * 0.91;
+    const by = height * 0.91 - lift;
     const sail = uiButton(this, width / 2 - 250, by, 'SET SAIL', () => begin(), { primary: true });
     uiButton(this, width / 2, by, 'ENDLESS', () => begin('endless'));
     uiButton(this, width / 2 + 250, by, 'SETTINGS', () => { Sound.init(); this.scene.start('Settings'); });

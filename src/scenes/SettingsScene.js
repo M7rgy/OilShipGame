@@ -75,7 +75,7 @@ class SettingsScene extends Phaser.Scene {
       fontFamily: 'monospace', fontSize: '16px', color: '#bcd2e0'
     }).setOrigin(0.5);
 
-    uiButton(this, width / 2, height * 0.90, 'DONE', () => this.exit(), { primary: true, w: 200 });
+    uiButton(this, width / 2, height * 0.90 - adBottomLift(this), 'DONE', () => this.exit(), { primary: true, w: 200 });
 
     this.input.keyboard.on('keydown-UP', () => this.move(-1));
     this.input.keyboard.on('keydown-DOWN', () => this.move(1));

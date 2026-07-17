@@ -83,8 +83,9 @@ class VictoryScene extends Phaser.Scene {
       this.scene.start('Game');
     };
     const menu = () => this.scene.start('MainMenu');
-    uiButton(this, width / 2 - 150, height * 0.90, 'SAIL AGAIN', again, { primary: true, w: 220 });
-    uiButton(this, width / 2 + 150, height * 0.90, 'MAIN MENU', menu, { w: 220 });
+    const by = height * 0.90 - adBottomLift(this);
+    uiButton(this, width / 2 - 150, by, 'SAIL AGAIN', again, { primary: true, w: 220 });
+    uiButton(this, width / 2 + 150, by, 'MAIN MENU', menu, { w: 220 });
 
     this.input.keyboard.on('keydown-ENTER', again);
     this.input.keyboard.on('keydown-ESC', menu);
