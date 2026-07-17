@@ -80,7 +80,8 @@ class VictoryScene extends Phaser.Scene {
       this.registry.set('hull', 100);
       this.registry.set('score', 0);
       this.registry.set('lastRank', -1);
-      this.scene.start('Game');
+      this.registry.set('continuesUsed', 0);
+      this.scene.start('LevelIntro');
     };
     const menu = () => this.scene.start('MainMenu');
     const by = height * 0.90 - adBottomLift(this);

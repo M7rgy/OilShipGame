@@ -81,7 +81,7 @@ class MainMenuScene extends Phaser.Scene {
       this.registry.set('hull', 100);
       this.registry.set('score', 0);
       this.registry.set('continuesUsed', 0);
-      this.scene.start('Game');
+      this.scene.start('LevelIntro');
     };
 
     // tappable buttons (work with mouse and touch); keyboard shortcuts remain

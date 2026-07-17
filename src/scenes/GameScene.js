@@ -139,8 +139,8 @@ class GameScene extends Phaser.Scene {
       if (this.touch) { this.touch.destroy(); }
     });
 
-    // level briefing card
-    this.showBriefing();
+    // brief "GO!" flash — the level name/briefing is shown on LevelIntro
+    this.showGo();
   }
 
   // ------------------------------------------------------------- construction
@@ -299,10 +299,17 @@ class GameScene extends Phaser.Scene {
   rollPickup(x) {
     const cfg = this.cfg;
     const rnd = this.kitRnd;
-    if (rnd.frac() > 0.65) {
+    // Independent rates. Health packs (repair kits) are boosted +50% over the
+    // old ~0.36 rate; flare canisters stay about the same.
+    const roll = rnd.frac();
+    let key;
+    if (roll < 0.54) {
+      key = 'repairKit';
+    } else if (roll < 0.83) {
+      key = 'flareKit';
+    } else {
       return;
     }
-    const key = rnd.frac() < 0.55 ? 'repairKit' : 'flareKit';
     const y = rnd.between(cfg.passageTop + 60, cfg.passageBottom - 60);
     const kit = this.physics.add.image(x, y, key).setDepth(5);
     kit.kind = key;
@@ -662,23 +669,15 @@ class GameScene extends Phaser.Scene {
     this.updateHullBar();
   }
 
-  showBriefing() {
-    const card = this.add.container(this.viewW / 2, this.viewH / 2 - 40).setScrollFactor(0).setDepth(120);
-    const bg = this.add.rectangle(0, 0, 640, 120, 0x061420, 0.85).setStrokeStyle(2, 0x5fb6e8);
-    const title = this.add.text(0, -30, `LEVEL ${this.cfg.id} — ${this.cfg.name}`, {
-      fontFamily: 'Georgia, serif', fontSize: '28px', color: '#f4e9d8'
-    }).setOrigin(0.5);
-    const brief = this.add.text(0, 12, this.cfg.briefing, {
-      fontFamily: 'monospace', fontSize: '16px', color: '#bcd2e0'
-    }).setOrigin(0.5);
-    card.add([bg, title, brief]);
-    this.briefingCard = card;
+  showGo() {
+    const go = this.add.text(this.viewW / 2, this.viewH / 2, 'GO!', {
+      fontFamily: 'Georgia, serif', fontSize: '64px', color: '#37e07a',
+      stroke: '#04121f', strokeThickness: 6
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(120);
+    this.briefingCard = go;
     this.tweens.add({
-      targets: card,
-      alpha: 0,
-      delay: 2600,
-      duration: 600,
-      onComplete: () => { card.destroy(); this.briefingCard = null; }
+      targets: go, scale: 1.3, alpha: 0, duration: 800, ease: 'Cubic.easeOut',
+      onComplete: () => { go.destroy(); this.briefingCard = null; }
     });
   }
 
@@ -966,12 +965,13 @@ class GameScene extends Phaser.Scene {
         fontFamily: 'Georgia, serif', fontSize: '42px', color: '#37e07a', stroke: '#04121f', strokeThickness: 6
       }).setOrigin(0.5).setScrollFactor(0).setDepth(130);
       this.tweens.add({ targets: note, scale: 1.15, duration: 800, yoyo: true });
-      // show an interstitial between legs (per configured frequency), then go
+      // show an interstitial between legs (per configured frequency), then
+      // hand off to the LevelIntro gate (player taps START to begin the leg)
       const every = Math.max(1, ADS_CONFIG.interstitialEveryLevels);
       const showAd = nextIdx % every === 0;
       this.time.delayedCall(1800, async () => {
         if (showAd) { await Ads.showInterstitial(); }
-        this.scene.start('Game');
+        this.scene.start('LevelIntro');
       });
     }
   }

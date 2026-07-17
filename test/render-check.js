@@ -132,8 +132,13 @@ async function main() {
     if (!paint.ok) { fail('MainMenu canvas looks blank'); }
     await page.screenshot({ path: path.join(SHOTS, '1-menu.png') });
 
-    // 2. start game
+    // 2. start game (menu -> LevelIntro gate -> Game)
     await page.keyboard.press('Enter');
+    await page.waitForFunction(
+      () => window.game.scene.isActive('LevelIntro'),
+      null, { timeout: 10000 }
+    );
+    await page.keyboard.press('Enter'); // START LEVEL
     await page.waitForFunction(
       () => window.game.scene.isActive('Game'),
       null, { timeout: 10000 }
@@ -220,6 +225,8 @@ async function main() {
     // 7. endless mode starts, streams hazards, and shows the distance HUD
     await page.waitForFunction(() => window.game.scene.isActive('MainMenu'), null, { timeout: 8000 });
     await page.keyboard.press('KeyE');
+    await page.waitForFunction(() => window.game.scene.isActive('LevelIntro'), null, { timeout: 10000 });
+    await page.keyboard.press('Enter'); // BEGIN
     await page.waitForFunction(() => window.game.scene.isActive('Game'), null, { timeout: 15000 });
     const endless = await page.evaluate(() => {
       const s = window.game.scene.getScene('Game');
