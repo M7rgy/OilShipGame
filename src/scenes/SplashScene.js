@@ -71,6 +71,9 @@ class SplashScene extends Phaser.Scene {
     Sound.resume();
     Sound.setVolume(Store.settings().volume);
 
+    // request landscape + fullscreen while we still have the user gesture
+    this.goFullscreenLandscape();
+
     // kick off ad SDK init (async, safe no-op off mobile)
     Ads.init();
 
@@ -79,6 +82,39 @@ class SplashScene extends Phaser.Scene {
     this.tweens.killTweensOf(this.prompt);
     this.prompt.setText('LOADING…').setAlpha(1).setColor('#bcd2e0');
     this.time.delayedCall(60, () => this.scene.start('Boot'));
+  }
+
+  /**
+   * On touch devices, go fullscreen and lock to landscape. This must run from
+   * a user gesture. On mobile browsers the Fullscreen API + Screen Orientation
+   * API handle it; in the Capacitor Android app the StatusBar plugin (if
+   * present) hides the status bar, and the manifest handles the hard
+   * orientation lock (see ANDROID.md). All calls are guarded no-ops elsewhere.
+   */
+  async goFullscreenLandscape() {
+    if (typeof IS_TOUCH === 'undefined' || !IS_TOUCH) {
+      return;
+    }
+    try {
+      const el = document.documentElement;
+      if (!document.fullscreenElement && el.requestFullscreen) {
+        await el.requestFullscreen({ navigationUI: 'hide' });
+      }
+    } catch (e) { /* not permitted here — fine */ }
+    try {
+      if (window.screen && screen.orientation && screen.orientation.lock) {
+        await screen.orientation.lock('landscape');
+      }
+    } catch (e) { /* orientation lock unsupported — fine */ }
+    try {
+      const cap = window.Capacitor;
+      if (cap && cap.Plugins && cap.Plugins.StatusBar) {
+        cap.Plugins.StatusBar.hide();
+        if (cap.Plugins.StatusBar.setOverlaysWebView) {
+          cap.Plugins.StatusBar.setOverlaysWebView({ overlay: true });
+        }
+      }
+    } catch (e) { /* status bar plugin absent — fine */ }
   }
 
   update(time, delta) {
