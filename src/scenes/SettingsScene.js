@@ -50,15 +50,30 @@ class SettingsScene extends Phaser.Scene {
     this.selected = 0;
 
     this.rowTexts = this.rows.map((row, i) => {
-      return this.add.text(width / 2, height * 0.38 + i * 60, '', {
+      const ry = height * 0.38 + i * 60;
+      const t = this.add.text(width / 2, ry, '', {
         fontFamily: 'monospace', fontSize: '24px', color: '#e8f0f6'
       }).setOrigin(0.5);
+      // tap a row to select it, and on touch, tapping a toggle flips it
+      t.setInteractive({ useHandCursor: true });
+      t.on('pointerdown', () => {
+        this.selected = i;
+        if (row.type === 'toggle') { this.adjust(1); } else { this.refresh(); }
+      });
+      // on-screen -/+ for the volume slider (touch has no arrow keys)
+      if (row.type === 'slider') {
+        uiButton(this, width / 2 - 250, ry, '-', () => { this.selected = i; this.adjust(-1); }, { w: 52, h: 44 });
+        uiButton(this, width / 2 + 250, ry, '+', () => { this.selected = i; this.adjust(1); }, { w: 52, h: 44 });
+      }
+      return t;
     });
 
-    this.hint = this.add.text(width / 2, height * 0.86,
-      'UP/DOWN — select      LEFT/RIGHT — change      ENTER/ESC — back', {
+    this.hint = this.add.text(width / 2, height * 0.80,
+      'UP/DOWN — select    LEFT/RIGHT — change    (or tap the rows)', {
       fontFamily: 'monospace', fontSize: '16px', color: '#bcd2e0'
     }).setOrigin(0.5);
+
+    uiButton(this, width / 2, height * 0.90, 'DONE', () => this.exit(), { primary: true, w: 200 });
 
     this.input.keyboard.on('keydown-UP', () => this.move(-1));
     this.input.keyboard.on('keydown-DOWN', () => this.move(1));

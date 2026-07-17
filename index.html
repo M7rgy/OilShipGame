@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#04121f" />
   <title>Hormuz Escape</title>
   <link rel="icon" href="data:," />
   <style>
@@ -12,6 +16,12 @@
       background: #04121f;
       height: 100%;
       overflow: hidden;
+      /* stop the browser from hijacking touch as scroll/zoom/select */
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior: none;
     }
     #game-container {
       width: 100%;
@@ -22,17 +32,55 @@
     }
     canvas {
       image-rendering: auto;
+      touch-action: none;
+    }
+
+    /* Landscape game: on touch devices held in portrait, ask to rotate. */
+    #rotate-hint { display: none; }
+    @media (orientation: portrait) and (pointer: coarse) {
+      #rotate-hint {
+        display: flex;
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+        background: #04121f;
+        color: #d8e2ea;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-family: 'Georgia', serif;
+        padding: 24px;
+      }
+      #rotate-hint .icon {
+        font-size: 64px;
+        display: block;
+        margin-bottom: 16px;
+        animation: rock 1.6s ease-in-out infinite;
+      }
+      #rotate-hint p { font-size: 20px; line-height: 1.5; margin: 0; }
+      #game-container { visibility: hidden; }
+    }
+    @keyframes rock {
+      0%, 100% { transform: rotate(-12deg); }
+      50% { transform: rotate(78deg); }
     }
   </style>
 </head>
 <body>
   <div id="game-container"></div>
+  <div id="rotate-hint">
+    <div>
+      <span class="icon">📱</span>
+      <p>Rotate your device to landscape<br />to run the Strait.</p>
+    </div>
+  </div>
 
   <script src="node_modules/phaser/dist/phaser.min.js"></script>
   <script src="src/config/levels.js"></script>
   <script src="src/util/Storage.js"></script>
   <script src="src/audio/SoundSynth.js"></script>
   <script src="src/gfx/Textures.js"></script>
+  <script src="src/ui/TouchControls.js"></script>
   <script src="src/scenes/BootScene.js"></script>
   <script src="src/scenes/MainMenuScene.js"></script>
   <script src="src/scenes/SettingsScene.js"></script>

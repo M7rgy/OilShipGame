@@ -4,7 +4,15 @@
 
 // `?canvas` forces the Canvas renderer — useful for headless test runs where
 // software WebGL is too slow to hold a playable frame rate.
-const forceCanvas = new URLSearchParams(window.location.search).has('canvas');
+const params = new URLSearchParams(window.location.search);
+const forceCanvas = params.has('canvas');
+
+// Touch device? Show on-screen controls and skip the "press key" prompts.
+// `?touch` forces it on for testing on desktop.
+const IS_TOUCH = params.has('touch')
+  || (typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches)
+  || (navigator.maxTouchPoints > 0)
+  || ('ontouchstart' in window);
 
 const config = {
   type: forceCanvas ? Phaser.CANVAS : Phaser.AUTO,
@@ -24,7 +32,8 @@ const config = {
     autoCenter: Phaser.Scale.CENTER_BOTH
   },
   input: {
-    gamepad: true
+    gamepad: true,
+    activePointers: 3 // steer + fire + one spare, simultaneously
   },
   scene: [BootScene, MainMenuScene, SettingsScene, GameScene, PauseScene, GameOverScene, VictoryScene]
 };

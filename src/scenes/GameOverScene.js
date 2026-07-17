@@ -62,19 +62,18 @@ class GameOverScene extends Phaser.Scene {
 
     this.drawHighScores(width / 2, height * 0.60);
 
-    const retry = this.add.text(width / 2, height * 0.90,
-      `ENTER — ${endless ? 'run again' : 'retry level'}        ESC — main menu`, {
-      fontFamily: 'monospace', fontSize: '22px', color: '#bcd2e0'
-    }).setOrigin(0.5);
-    this.tweens.add({ targets: retry, alpha: 0.3, duration: 700, yoyo: true, repeat: -1 });
-
-    this.input.keyboard.on('keydown-ENTER', () => {
+    const retry = () => {
       this.registry.set('hull', 100);
       this.registry.set('score', 0);
       this.registry.set('lastRank', -1);
       this.scene.start('Game');
-    });
-    this.input.keyboard.on('keydown-ESC', () => this.scene.start('MainMenu'));
+    };
+    const menu = () => this.scene.start('MainMenu');
+    uiButton(this, width / 2 - 150, height * 0.90, endless ? 'RUN AGAIN' : 'RETRY', retry, { primary: true, w: 220 });
+    uiButton(this, width / 2 + 150, height * 0.90, 'MAIN MENU', menu, { w: 220 });
+
+    this.input.keyboard.on('keydown-ENTER', retry);
+    this.input.keyboard.on('keydown-ESC', menu);
   }
 
   drawHighScores(cx, cy) {

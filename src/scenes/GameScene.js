@@ -54,6 +54,16 @@ class GameScene extends Phaser.Scene {
     this.flareStock = 3;
     this.activeFlares = [];
 
+    // on-screen controls for touch devices (built after the HUD so they sit
+    // above it); a no-op on desktop
+    this.touch = null;
+    if (typeof IS_TOUCH !== 'undefined' && IS_TOUCH) {
+      this.touch = new TouchControls(this, {
+        onFlare: () => this.launchFlare(),
+        onPause: () => this.pauseGame()
+      });
+    }
+
     // water current state
     this.current = new Phaser.Math.Vector2(0, 0);
     this.currentTarget = new Phaser.Math.Vector2(0, 0);
@@ -121,6 +131,7 @@ class GameScene extends Phaser.Scene {
       Sound.stopEngine();
       Sound.stopLockOn();
       Sound.stopMusic();
+      if (this.touch) { this.touch.destroy(); }
     });
 
     // level briefing card
@@ -902,6 +913,12 @@ class GameScene extends Phaser.Scene {
         if (pausePressed && !this.padButtons.pause) { this.pauseGame(); }
         this.padButtons.pause = pausePressed;
       }
+    }
+
+    // touch thumb-stick blends into the same analogue path as the gamepad
+    if (this.touch) {
+      padX += this.touch.vec.x;
+      padY += this.touch.vec.y;
     }
 
     const ACCEL_X = 215;

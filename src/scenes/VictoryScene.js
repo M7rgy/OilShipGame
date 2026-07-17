@@ -70,22 +70,22 @@ class VictoryScene extends Phaser.Scene {
       }).setOrigin(0.5);
     });
 
-    const again = this.add.text(width / 2, height * 0.90, 'ENTER — sail again        ESC — main menu', {
-      fontFamily: 'monospace', fontSize: '22px', color: '#bcd2e0'
-    }).setOrigin(0.5);
-    this.tweens.add({ targets: again, alpha: 0.3, duration: 700, yoyo: true, repeat: -1 });
-
     Sound.fanfare();
 
-    this.input.keyboard.on('keydown-ENTER', () => {
+    const again = () => {
       this.registry.set('mode', null);
       this.registry.set('levelIndex', 0);
       this.registry.set('hull', 100);
       this.registry.set('score', 0);
       this.registry.set('lastRank', -1);
       this.scene.start('Game');
-    });
-    this.input.keyboard.on('keydown-ESC', () => this.scene.start('MainMenu'));
+    };
+    const menu = () => this.scene.start('MainMenu');
+    uiButton(this, width / 2 - 150, height * 0.90, 'SAIL AGAIN', again, { primary: true, w: 220 });
+    uiButton(this, width / 2 + 150, height * 0.90, 'MAIN MENU', menu, { w: 220 });
+
+    this.input.keyboard.on('keydown-ENTER', again);
+    this.input.keyboard.on('keydown-ESC', menu);
   }
 
   update(time, delta) {

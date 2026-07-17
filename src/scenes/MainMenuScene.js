@@ -43,33 +43,20 @@ class MainMenuScene extends Phaser.Scene {
       fontStyle: 'italic'
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, height * 0.78,
-      'ARROWS / WASD — helm      SPACE — decoy flare      P — pause      M — mute      (gamepad supported)', {
+    const touch = typeof IS_TOUCH !== 'undefined' && IS_TOUCH;
+    this.add.text(width / 2, height * 0.76, touch
+      ? 'Drag the left side to steer  •  FLARE button  •  II to pause'
+      : 'ARROWS / WASD — helm    SPACE — decoy flare    P — pause    M — mute    (gamepad supported)', {
       fontFamily: 'monospace',
       fontSize: '16px',
       color: '#bcd2e0'
     }).setOrigin(0.5);
 
     const best = Store.highScores()[0];
-    this.add.text(width / 2, height * 0.84,
+    this.add.text(width / 2, height * 0.82,
       best ? `BEST  ${best.score}  (${best.label})` : '', {
       fontFamily: 'monospace', fontSize: '16px', color: '#8fb4cc'
     }).setOrigin(0.5);
-
-    this.startText = this.add.text(width / 2, height * 0.90,
-      'ENTER — set sail      E — endless gauntlet      S — settings', {
-      fontFamily: 'monospace',
-      fontSize: '22px',
-      color: '#ffd27a'
-    }).setOrigin(0.5);
-
-    this.tweens.add({
-      targets: this.startText,
-      alpha: 0.25,
-      duration: 700,
-      yoyo: true,
-      repeat: -1
-    });
 
     this.tweens.add({
       targets: [this.ship],
@@ -92,14 +79,18 @@ class MainMenuScene extends Phaser.Scene {
       this.registry.set('score', 0);
       this.scene.start('Game');
     };
+
+    // tappable buttons (work with mouse and touch); keyboard shortcuts remain
+    const by = height * 0.91;
+    const sail = uiButton(this, width / 2 - 250, by, 'SET SAIL', () => begin(), { primary: true });
+    uiButton(this, width / 2, by, 'ENDLESS', () => begin('endless'));
+    uiButton(this, width / 2 + 250, by, 'SETTINGS', () => { Sound.init(); this.scene.start('Settings'); });
+    this.tweens.add({ targets: sail.bg, alpha: 0.6, duration: 800, yoyo: true, repeat: -1 });
+
     this.input.keyboard.on('keydown-ENTER', () => begin());
     this.input.keyboard.on('keydown-SPACE', () => begin());
     this.input.keyboard.on('keydown-E', () => begin('endless'));
-    this.input.keyboard.on('keydown-S', () => {
-      Sound.init();
-      this.scene.start('Settings');
-    });
-    this.input.on('pointerdown', () => begin());
+    this.input.keyboard.on('keydown-S', () => { Sound.init(); this.scene.start('Settings'); });
     if (this.input.gamepad) {
       this.input.gamepad.once('down', () => begin());
     }

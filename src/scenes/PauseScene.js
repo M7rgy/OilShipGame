@@ -18,22 +18,26 @@ class PauseScene extends Phaser.Scene {
       strokeThickness: 6
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, height * 0.54,
-      'P / ESC — resume        Q — abandon run (main menu)', {
-      fontFamily: 'monospace', fontSize: '20px', color: '#bcd2e0'
+    this.add.text(width / 2, height * 0.52,
+      'P / ESC — resume        Q — abandon run', {
+      fontFamily: 'monospace', fontSize: '18px', color: '#bcd2e0'
     }).setOrigin(0.5);
 
     const resume = () => {
       this.scene.stop();
       this.scene.resume('Game');
     };
-    this.input.keyboard.on('keydown-P', resume);
-    this.input.keyboard.on('keydown-ESC', resume);
-    this.input.keyboard.on('keydown-Q', () => {
+    const quit = () => {
       this.scene.stop('Game');
       this.scene.stop();
       this.scene.start('MainMenu');
-    });
+    };
+    uiButton(this, width / 2 - 130, height * 0.64, 'RESUME', resume, { primary: true });
+    uiButton(this, width / 2 + 130, height * 0.64, 'ABANDON', quit);
+
+    this.input.keyboard.on('keydown-P', resume);
+    this.input.keyboard.on('keydown-ESC', resume);
+    this.input.keyboard.on('keydown-Q', quit);
 
     // gamepad Start also resumes (with a small debounce so the same press
     // that opened the pause menu doesn't instantly close it)

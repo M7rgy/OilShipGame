@@ -24,6 +24,12 @@ are no image or audio assets.
 Gamepads are supported: left stick or d-pad steers, A launches a flare,
 Start pauses.
 
+**Touch devices** (phones/tablets): on-screen controls appear automatically —
+a thumb-stick on the left half of the screen steers (touch anywhere in that
+zone), a **FLARE** button is bottom-right, and a pause button (**II**) is
+bottom-centre. All menus are tappable. The game is landscape; in portrait it
+shows a "rotate your device" prompt.
+
 The tanker is heavy: it accelerates slowly, keeps its momentum, and reversing
 is weaker than steaming ahead. Touching the rocky shorelines scrapes the hull;
 mines and missiles do serious damage. Reach the green buoy line to clear a
@@ -126,8 +132,9 @@ Then on itch.io:
 3. Under **Uploads**, upload `dist-web/hormuz-escape-web.zip` and tick
    **"This file will be played in the browser."** (The zip has `index.html`
    at its root, which itch.io requires.)
-4. Set **Embed options → Viewport dimensions** to **1280 × 720**, and enable
-   the **fullscreen button** (the game scales to fit either way).
+4. Set **Embed options → Viewport dimensions** to **1280 × 720**, enable the
+   **fullscreen button**, and tick **"Mobile friendly"** (orientation:
+   default) — the game has touch controls and scales to fit any screen.
 5. Add a title, description, and a screenshot or two, set pricing (free or
    pay-what-you-want), then **Save & view page** and publish.
 
@@ -159,6 +166,7 @@ src/
   config/levels.js         The 5-level array + endless config
   audio/SoundSynth.js      Web Audio sound synthesizer
   gfx/Textures.js          Procedural texture generation
+  ui/TouchControls.js      On-screen touch controls + tappable button helper
   util/Storage.js          localStorage settings + high scores, Steam helper
   scenes/                  Boot, MainMenu, Settings, Game, Pause, GameOver, Victory
 index.html                 Renderer entry page
