@@ -1,0 +1,14 @@
+{
+  "enabled": false,
+  "appId": 480,
+  "comment": "Placeholder Steamworks configuration. Replace appId 480 (Spacewar test app) with your real Steam App ID, set enabled to true, install the 'steamworks.js' npm package, and add a steam_appid.txt file in the project root for local testing.",
+  "achievements": {
+    "ACH_FIRST_ESCAPE": "Complete Level 1",
+    "ACH_FULL_TRANSIT": "Complete all 5 levels",
+    "ACH_UNTOUCHED": "Complete a level without taking damage"
+  },
+  "richPresence": {
+    "inMenu": "Docked at port",
+    "inGame": "Running the Strait - Level {level}"
+  }
+}

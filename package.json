@@ -1,0 +1,28 @@
+{
+  "name": "hormuz-escape",
+  "version": "0.1.0",
+  "description": "A 2D physics-based side-scroller: pilot an oil cargo ship through the Strait of Hormuz, dodging naval mines and tracking missiles.",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test:render": "node test/render-check.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://local_proxy@127.0.0.1:41729/git/M7rgy/OilShipGame"
+  },
+  "keywords": [
+    "game",
+    "phaser",
+    "electron",
+    "side-scroller"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "phaser": "^3.90.0"
+  },
+  "devDependencies": {
+    "electron": "^43.1.1",
+    "playwright-core": "^1.61.1"
+  }
+}

@@ -1,0 +1,70 @@
+'use strict';
+
+/** GameOverScene — the tanker went down. Offer retry of the current level. */
+class GameOverScene extends Phaser.Scene {
+  constructor() {
+    super('GameOver');
+  }
+
+  create() {
+    const { width, height } = this.scale;
+    const levelIdx = this.registry.get('levelIndex');
+    const cfg = LEVELS[levelIdx];
+
+    this.add.rectangle(width / 2, height / 2, width, height, 0x04121f, 1);
+    this.water = this.add.tileSprite(width / 2, height * 0.8, width, height * 0.4, 'water5')
+      .setAlpha(0.8);
+
+    // slick of burning oil on the surface
+    this.add.particles(width / 2, height * 0.62, 'smoke', {
+      x: { min: -220, max: 220 },
+      speedY: { min: -30, max: -12 },
+      scale: { start: 0.8, end: 2.6 },
+      alpha: { start: 0.3, end: 0 },
+      tint: 0x333333,
+      lifespan: 2600,
+      frequency: 90
+    });
+    this.add.particles(width / 2, height * 0.64, 'spark', {
+      x: { min: -200, max: 200 },
+      speedY: { min: -40, max: -10 },
+      scale: { start: 1.2, end: 0 },
+      tint: [0xff7733, 0xffb347],
+      lifespan: 900,
+      frequency: 60
+    });
+
+    this.add.text(width / 2, height * 0.30, 'SHIP LOST', {
+      fontFamily: 'Georgia, serif',
+      fontSize: '68px',
+      color: '#ff5544',
+      stroke: '#1a0500',
+      strokeThickness: 8
+    }).setOrigin(0.5);
+
+    this.add.text(width / 2, height * 0.42,
+      `She went down in the ${cfg.name}.`, {
+      fontFamily: 'Georgia, serif', fontSize: '24px', color: '#d8e2ea', fontStyle: 'italic'
+    }).setOrigin(0.5);
+
+    this.add.text(width / 2, height * 0.50, `SCORE  ${this.registry.get('score')}`, {
+      fontFamily: 'monospace', fontSize: '20px', color: '#ffd27a'
+    }).setOrigin(0.5);
+
+    const retry = this.add.text(width / 2, height * 0.88,
+      'ENTER — retry level        ESC — main menu', {
+      fontFamily: 'monospace', fontSize: '22px', color: '#bcd2e0'
+    }).setOrigin(0.5);
+    this.tweens.add({ targets: retry, alpha: 0.3, duration: 700, yoyo: true, repeat: -1 });
+
+    this.input.keyboard.on('keydown-ENTER', () => {
+      this.registry.set('hull', 100);
+      this.scene.start('Game');
+    });
+    this.input.keyboard.on('keydown-ESC', () => this.scene.start('MainMenu'));
+  }
+
+  update(time, delta) {
+    this.water.tilePositionX += 0.08 * delta;
+  }
+}
